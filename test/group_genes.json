@@ -1,0 +1,1 @@
+{"MTOR": ["MTOR"], "ARID1A": ["ARID1A"], "VHL": ["VHL"], "SETD2": ["SETD2"], "BAP1": ["BAP1"], "PBRM1": ["PBRM1"], "PIK3CA": ["PIK3CA"], "PTEN": ["PTEN"], "TP53": ["TP53"], "oncogenes": ["PIK3CA", "MTOR"], "tumor_supressors": ["PTEN", "TP53", "VHL"]}
