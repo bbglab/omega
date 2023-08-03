@@ -10,3 +10,9 @@ def canonical_channels():
     sorted_contexts = [b[0] + a[0] + b[1] + '>' + a[1] for a, b in sorted_contexts_tuples]
     
     return sorted_contexts
+
+
+def dict_append(d1, d2):
+    
+    return {k: d1.get(k, []) + d2.get(k, []) for k in d2}
+    

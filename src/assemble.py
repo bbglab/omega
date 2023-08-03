@@ -1,8 +1,11 @@
+import os
 import json
 import functools
 import operator
 
 import numpy as np
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -66,7 +69,8 @@ class Assembler:
         # used for mutability correction
 
         res = {}
-        for g in self.conf.namespace('genes'):
+        # for g in self.conf.namespace('genes'):
+        for g in self.data['gene'].unique():
             df = self.data[self.data['gene'] == g]
             for s in self.conf.namespace('samples'):
                 depths = np.nan_to_num(df[s].values.astype(np.float32))

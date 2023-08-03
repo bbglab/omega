@@ -1,13 +1,11 @@
 import os
-import glob
 import itertools
-import functools
 
-import pandas as pd
-import numpy as np
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
