@@ -30,9 +30,11 @@ def vartype(x,
     
     return "COMPLEX"
 
-all_possible_muts_file = "/workspace/datasets/transfer/ferran_to_ferriol/omega_tests/KidneyPanel.all_SNVs.bed_panel.annotation_summary.tsv"
 depth_dataframe_file = "/workspace/datasets/prominent/data/kidney/depth/2023-06-30.kidney_panel.chr.633.tsv.gz"
 mutations_file = "/workspace/datasets/prominent/data/kidney/mutations/2023-06-30.kidney.633.maf.annot.tsv.gz"
+
+# check which is the difference between these two
+all_possible_sites_file = "/workspace/datasets/transfer/ferran_to_ferriol/omega_tests/KidneyPanel.all_SNVs.bed_panel.annotation_summary.tsv"
 all_variants_annotated = "/home/fcalvet/projects/omega/omega/tests_ferriol/KidneyGenes.canonical_transcripts_CDS.VEPannotated.tsv"
 
 ##
@@ -40,7 +42,7 @@ all_variants_annotated = "/home/fcalvet/projects/omega/omega/tests_ferriol/Kidne
 ##
 
 # Read all possible mutations annotated by VEP
-all_possible_muts = pd.read_csv(all_variants_annotated, sep = "\t", header = 0)
+all_possible_sites_annotated = pd.read_csv(all_variants_annotated, sep = "\t", header = 0)
 
 
 # Read depth matrix
@@ -63,7 +65,7 @@ minimal_maf = minimal_maf.drop("TYPE", axis = 1)
 ##
 # Annotate observed mutations
 ##
-annotated_minimal_maf = minimal_maf.merge(all_possible_muts, on = ["CHROM", "POS", "REF", "ALT"], how = "left")
+annotated_minimal_maf = minimal_maf.merge(all_possible_sites_annotated, on = ["CHROM", "POS", "REF", "ALT"], how = "left")
 
 
 
@@ -76,69 +78,104 @@ samples = list(minimal_maf["SAMPLE_ID"].unique())
 
 ##
 # Count of all possible sites per sample (keeping only sites with enough depth)
+##
 #   Required information:
 #       All possible sites in the panel regions
 #       Depth per site per sample
 #   Output:
-#       sites per impa
+#       sites per:
+#           sample
+#           gene
+#           impact
+#           context
 ##
 binary_depth_dataframe = (depth_dataframe.set_index(["CHROM", "POS"]) > 0).astype(int).reset_index()
-all_possible_muts_per_sample = all_possible_muts.merge(binary_depth_dataframe, on = ["CHROM", "POS"], how = "left")
+all_possible_sites_per_sample = all_possible_sites_annotated.merge(binary_depth_dataframe, on = ["CHROM", "POS"], how = "left")
 
 # wide format
-muts_per_gene_impact_context_sample_wide = all_possible_muts_per_sample.groupby(by = ["GENE", "IMPACT", "CONTEXT_MUT"])[samples].sum().reset_index()
+sites_per_gene_impact_context_sample_wide = all_possible_sites_per_sample.groupby(
+                                                            by = ["GENE", "IMPACT", "CONTEXT_MUT"])[samples].sum().reset_index()
 
 # long format
-muts_per_gene_impact_context_sample_long = muts_per_gene_impact_context_sample_wide.melt(id_vars = ["GENE", "IMPACT", "CONTEXT_MUT"],
+sites_per_gene_impact_context_sample_long = sites_per_gene_impact_context_sample_wide.melt(id_vars = ["GENE", "IMPACT", "CONTEXT_MUT"],
                                                                                             var_name = "SAMPLE_ID",
                                                                                             value_name = "COUNT")
-# muts_per_gene_impact_context_sample_long
+# sites_per_gene_impact_context_sample_long
 
 
 
-# wide format
+##
+# Count of all observed mutations per sample
+##
+#   Required information:
+#       Annotated mutations observed
+#   Output:
+#       observed mutations per:
+#           sample
+#           gene
+#           impact
+#           context
+##
+
+# long format
 obs_muts_per_gene_impact_context_sample_long = annotated_minimal_maf.groupby(by = ["SAMPLE_ID", "GENE", "IMPACT"])["MUT_ID"].count()
 obs_muts_per_gene_impact_context_sample_long = obs_muts_per_gene_impact_context_sample_long.reset_index()
 obs_muts_per_gene_impact_context_sample_long.columns = list(obs_muts_per_gene_impact_context_sample_long.columns[:-1]) + ["COUNT"]
 # obs_muts_per_gene_impact_context_sample_long
 
 
-
+# only synonymous mutations
 obs_syn_muts_per_gene_impact_context_sample_long = obs_muts_per_gene_impact_context_sample_long[
                                                 obs_muts_per_gene_impact_context_sample_long["IMPACT"] == "synonymous"].reset_index(
                                                                                                                         drop = True)
 obs_syn_muts_per_gene_impact_context_sample_long
 
 
+# only synonymous mutations wide format
 obs_syn_muts_per_gene_impact_context_sample_wide = obs_syn_muts_per_gene_impact_context_sample_long.pivot(
                                                             index='GENE', columns='SAMPLE_ID', values='COUNT').fillna(0).astype(int).reset_index()
 obs_syn_muts_per_gene_impact_context_sample_wide.columns.name = None
 
 
+##
+# Compute mutational profile from the input data
+#       ***Remember to add some pseudocounts to the computation***
+##
+#   Required information:
+#       Annotated all possible sites
+#       Annotated mutations observed
+#       Depth matrix
+#   Output:
+#       Mutational profile per sample, computed with pseudocounts to prevent some probabilities from being 0
+##
 
-## Load mutation probabilities per sample
-## IDEALLY I SHOULD COMPUTE THEM HERE
-## Remember to add some pseudocounts to the computation
+
 subs = [''.join(z) for z in itertools.product('CT', 'ACGT') if z[0] != z[1]]
 flanks = [''.join(z) for z in itertools.product('ACGT', repeat=2)]
 contexts_unformatted = sorted([(a, b) for a, b in itertools.product(subs, flanks)], key=lambda x: (x[0], x[1]))
 contexts_no_change = [b[0]+a[0]+b[1] for a, b in contexts_unformatted]
 contexts_formatted = [b[0]+a[0]+b[1]+'>'+a[1] for a, b in contexts_unformatted]
 
-
+# create the matrix in the desired order
 empty_matrix = pd.DataFrame(index = contexts_formatted)
 
-counts_x_sample_context = annotated_minimal_maf.groupby(by = ["SAMPLE_ID", "CONTEXT_MUT"])["MUT_ID"].count().reset_index()
-counts_x_sample_matrix = counts_x_sample_context.pivot(index = "CONTEXT_MUT", columns = "SAMPLE_ID", values = "MUT_ID")
+# count the mutations per sample and per context
+counts_x_sample_context_long = annotated_minimal_maf.groupby(by = ["SAMPLE_ID", "CONTEXT_MUT"])["MUT_ID"].count().reset_index()
+counts_x_sample_matrix = counts_x_sample_context_long.pivot(index = "CONTEXT_MUT", columns = "SAMPLE_ID", values = "MUT_ID")
 counts_x_sample_matrix = pd.concat( (empty_matrix, counts_x_sample_matrix) , axis = 1)
 counts_x_sample_matrix = counts_x_sample_matrix.fillna(0)
 counts_x_sample_matrix = counts_x_sample_matrix.astype(int)
 
-filling_value = 0.5
-counts_x_sample_matrix = counts_x_sample_matrix + filling_value
+pseudocount = 0.5
+counts_x_sample_matrix = counts_x_sample_matrix + pseudocount
 
-# test if this works or not...
-trinuc_counts_per_sample = all_possible_muts.merge(depth_dataframe,
+# here we have the counts matrix for the number of mutations per sample per context
+# counts_x_sample_matrix
+
+
+# Compute the trinucleotide depth per sample
+# merge the dataframe of all possible sites with the dataframe of the depth per site per sample
+trinuc_depth_per_sample = all_possible_sites_annotated.merge(depth_dataframe,
                                                     on = ["CHROM", "POS"],
                                                     how = "left").groupby(by = "CONTEXT_MUT")[samples].sum()
 
@@ -152,7 +189,7 @@ for sample in samples:
     # we select the mutation counts for the first normalization
     Y = counts_x_sample_matrix[sample].values
     
-    trinuc_counts_96 = trinuc_counts_per_sample[sample].values
+    trinuc_counts_96 = trinuc_depth_per_sample[sample].values
     
     # correct by the amount of times a trinucleotide appears
     norm_profile = [count / trinuc_r for count, trinuc_r in zip(Y,
@@ -165,65 +202,42 @@ for sample in samples:
     
     mut_probability[sample] = [norm_profile_dict[t] for t in contexts_formatted]
 
-
-
+# Now mut_probability has the mutational profiles per sample
+# mut_probability
 
 
 # for sample in samples:
-
 #     # Open file for reading
 # #    with open(f'{mut_probability_dir}/{sample}.norm_profile.kidney_bed.json', 'r') as f:
 # #    with open(f'{mut_probability_dir}/{sample}.norm_profile.trinuc.json', 'r') as f:
 #     with open(f'{mut_probability_dir}/{sample}.norm_profile.trinuc.depth.json', 'r') as f:
 #         # Load JSON data
 #         mut_probability_dict = json.load(f)
-
 #     mut_probability[sample] = [mut_probability_dict[t] for t in contexts_formatted]
-
 #     # break
 # mut_probability.head()
 
 
 
+
 ## Mutability computation
-## Get synonymous counts
-syn_muts_per_gene_impact_context_sample = muts_per_gene_impact_context_sample_wide[
-                                                muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"].reset_index(
-                                                                                                                        drop = True)
-syn_muts_per_gene_impact_context_sample[samples] = syn_muts_per_gene_impact_context_sample[samples].fillna(0).astype(int)
-syn_muts_per_gene_impact_context_sample
-# GENE	IMPACT	CONTEXT_MUT	K_5_1_A_1	K_6_1_A_1	K_7_1_A_1	K_8_1_A_1	K_9_1_A_1	K_10_1_A_1	K_11_1_A_1	...	K_35_1_A_1	K_36_1_A_1	K_37_1_A_1	K_38_1_A_1	K_39_1_A_1	K_40_1_A_1	K_41_1_A_1	K_42_1_A_1	K_43_1_A_1	K_44_1_A_1
-# 0	ARID1A	synonymous	ACA>A	11	11	11	11	11	11	11	...	11	11	11	11	11	11	11	11	11	11
-# 1	ARID1A	synonymous	ACA>G	11	11	11	11	11	11	11	...	11	11	11	11	11	11	11	11	11	11
-# 2	ARID1A	synonymous	ACA>T	66	66	66	66	66	66	66	...	66	66	66	66	66	66	66	66	66	66
-# 3	ARID1A	synonymous	ACC>A	9	9	9	9	9	9	9	...	9	9	9	9	9	9	9	9	9	9
-# 4	ARID1A	synonymous	ACC>G	9	9	9	9	9	9	9	...	9	9	9	9	9	9	9	9	9	9
-# ...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...
-# 709	VHL	synonymous	TTG>C	7	7	7	7	7	7	7	...	7	7	7	7	7	7	7	7	7	7
-# 710	VHL	synonymous	TTG>G	4	4	4	4	4	4	4	...	4	4	4	4	4	4	4	4	4	4
-# 711	VHL	synonymous	TTT>A	2	2	2	2	2	2	2	...	2	2	2	2	2	2	2	2	2	2
-# 712	VHL	synonymous	TTT>C	3	3	3	3	3	3	3	...	3	3	3	3	3	3	3	3	3	3
-# 713	VHL	synonymous	TTT>G	1	1	1	1	1	1	1	...	1	1	1	1	1	1	1	1	1	1
-# 714 rows × 43 columns
+## Get synonymous sites counts per gene, context sample
+syn_sites_per_gene_impact_context_sample = sites_per_gene_impact_context_sample_wide[
+                                                    sites_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
+                                                ].reset_index(drop = True)
 
-syn_muts_per_gene_impact_context_sample["GENE"].value_counts()
-# ARID1A    92
-# BAP1      92
-# SETD2     92
-# PBRM1     91
-# MTOR      90
-# TP53      87
-# PTEN      82
-# VHL       80
-# PIK3CA     8
-# Name: GENE, dtype: int64
+syn_sites_per_gene_impact_context_sample[samples] = syn_sites_per_gene_impact_context_sample[samples].fillna(0).astype(int)
+# syn_sites_per_gene_impact_context_sample
+# syn_sites_per_gene_impact_context_sample["GENE"].value_counts()
 
+# the number of synonymous sites per gene should be the same for all samples
+# except if there are differences in sequencing coverage of those areas
 
 # Merge synonymous sites with mutational probabilities
-synonymous_sites_mut_probs = syn_muts_per_gene_impact_context_sample.merge(mut_probability,
+synonymous_sites_mut_probs = syn_sites_per_gene_impact_context_sample.merge(mut_probability,
                                                                             suffixes = [".sites", ".probability"],
                                                                             on = "CONTEXT_MUT")
-synonymous_sites_mut_probs.head()
+# synonymous_sites_mut_probs.head()
 # GENE	IMPACT	CONTEXT_MUT	K_5_1_A_1.sites	K_6_1_A_1.sites	K_7_1_A_1.sites	K_8_1_A_1.sites	K_9_1_A_1.sites	K_10_1_A_1.sites	K_11_1_A_1.sites	...	K_35_1_A_1.probability	K_36_1_A_1.probability	K_37_1_A_1.probability	K_38_1_A_1.probability	K_39_1_A_1.probability	K_40_1_A_1.probability	K_41_1_A_1.probability	K_42_1_A_1.probability	K_43_1_A_1.probability	K_44_1_A_1.probability
 # 0	ARID1A	synonymous	ACA>A	11	11	11	11	11	11	11	...	0.010839	0.010135	0.011535	0.029379	0.0	0.0	0.007925	0.006432	0.009754	0.009622
 # 1	BAP1	synonymous	ACA>A	3	3	3	3	3	3	3	...	0.010839	0.010135	0.011535	0.029379	0.0	0.0	0.007925	0.006432	0.009754	0.009622
@@ -250,7 +264,7 @@ synonymous_probs_gene_context
 # 713	VHL	synonymous	TTT>G	0.001170	0.003273	0.006047	0.000000	0.005606	0.000000	0.005285	...	0.005877	0.000000	0.009370	0.000000	0.004284	0.009167	0.006442	0.005155	0.000000	0.000000
 # 714 rows × 43 columns
 
-synonymous_probs_gene_context["GENE"].value_counts()
+# synonymous_probs_gene_context["GENE"].value_counts()
 # ARID1A    92
 # BAP1      92
 # SETD2     92
@@ -261,12 +275,17 @@ synonymous_probs_gene_context["GENE"].value_counts()
 # VHL       80
 # PIK3CA     8
 # Name: GENE, dtype: int64
+# not all genes have all contexts with synonymous mutations and with coverage
 
 
+
+# Here we add the mutation probability of all synonymous sites in each gene and sample
+#       these are the expected synonymous mutations taking into account only the mutational profile
+###
 # these are the values that should be compared to the observed mutations,
-#    to then adjust the mutability profile
+#    to then adjust the mutability
 expected_and_prob_computed_syn = synonymous_probs_gene_context.drop(["IMPACT", "CONTEXT_MUT"],
-                                                                      axis = 1).groupby("GENE").sum().reset_index()
+                                                                        axis = 1).groupby("GENE").sum().reset_index()
 expected_and_prob_computed_syn
 # GENE	K_5_1_A_1	K_6_1_A_1	K_7_1_A_1	K_8_1_A_1	K_9_1_A_1	K_10_1_A_1	K_11_1_A_1	K_12_1_A_1	K_13_1_A_1	...	K_35_1_A_1	K_36_1_A_1	K_37_1_A_1	K_38_1_A_1	K_39_1_A_1	K_40_1_A_1	K_41_1_A_1	K_42_1_A_1	K_43_1_A_1	K_44_1_A_1
 # 0	ARID1A	54.793706	52.917135	50.109266	57.572528	47.963827	53.271773	55.433878	52.263707	49.920224	...	56.944989	55.439799	54.272710	48.890340	56.173718	53.130103	55.251997	49.777512	54.313869	56.310034
@@ -281,19 +300,20 @@ expected_and_prob_computed_syn
 # 9 rows × 41 columns
 
 # this comes from above and is the number of observed mutations in each sample
+# obs_syn_muts_per_gene_impact_context_sample_wide
+# # GENE	K_10_1_A_1	K_11_1_A_1	K_12_1_A_1	K_13_1_A_1	K_14_1_A_1	K_15_1_A_1	K_16_1_A_1	K_17_1_A_1	K_18_1_A_1	...	K_40_1_A_1	K_41_1_A_1	K_42_1_A_1	K_43_1_A_1	K_44_1_A_1	K_5_1_A_1	K_6_1_A_1	K_7_1_A_1	K_8_1_A_1	K_9_1_A_1
+# # 0	ARID1A	17	15	33	11	27	25	19	12	25	...	11	11	8	6	3	32	18	15	4	31
+# # 1	BAP1	11	7	7	5	15	3	7	6	4	...	3	2	2	2	1	18	6	7	2	7
+# # 2	MTOR	7	11	17	9	25	12	16	13	11	...	7	7	9	5	5	61	18	15	6	23
+# # 3	PBRM1	12	10	14	15	11	12	11	11	8	...	10	14	8	6	5	22	17	15	6	16
+# # 4	PIK3CA	0	0	0	0	0	0	0	0	0	...	0	0	0	0	0	0	0	0	0	0
+# # 5	PTEN	1	4	4	1	5	2	3	4	3	...	1	1	0	0	1	6	1	3	0	8
+# # 6	SETD2	18	18	33	11	25	16	20	24	23	...	15	22	7	6	7	48	31	33	5	54
+# # 7	TP53	4	2	4	6	5	4	5	2	2	...	0	0	1	2	0	6	3	4	2	5
+# # 8	VHL	0	1	3	2	0	2	4	0	2	...	1	2	0	1	0	5	1	2	1	3
+# # 9 rows × 41 columns
 
-obs_syn_muts_per_gene_impact_context_sample_wide
-# GENE	K_10_1_A_1	K_11_1_A_1	K_12_1_A_1	K_13_1_A_1	K_14_1_A_1	K_15_1_A_1	K_16_1_A_1	K_17_1_A_1	K_18_1_A_1	...	K_40_1_A_1	K_41_1_A_1	K_42_1_A_1	K_43_1_A_1	K_44_1_A_1	K_5_1_A_1	K_6_1_A_1	K_7_1_A_1	K_8_1_A_1	K_9_1_A_1
-# 0	ARID1A	17	15	33	11	27	25	19	12	25	...	11	11	8	6	3	32	18	15	4	31
-# 1	BAP1	11	7	7	5	15	3	7	6	4	...	3	2	2	2	1	18	6	7	2	7
-# 2	MTOR	7	11	17	9	25	12	16	13	11	...	7	7	9	5	5	61	18	15	6	23
-# 3	PBRM1	12	10	14	15	11	12	11	11	8	...	10	14	8	6	5	22	17	15	6	16
-# 4	PIK3CA	0	0	0	0	0	0	0	0	0	...	0	0	0	0	0	0	0	0	0	0
-# 5	PTEN	1	4	4	1	5	2	3	4	3	...	1	1	0	0	1	6	1	3	0	8
-# 6	SETD2	18	18	33	11	25	16	20	24	23	...	15	22	7	6	7	48	31	33	5	54
-# 7	TP53	4	2	4	6	5	4	5	2	2	...	0	0	1	2	0	6	3	4	2	5
-# 8	VHL	0	1	3	2	0	2	4	0	2	...	1	2	0	1	0	5	1	2	1	3
-# 9 rows × 41 columns
+
 
 # we compute the value of alpha per each gene-sample pair,
 # by dividing the number of expected synonymous by the number of synonymous we would be generating with the original mutational profile
@@ -313,10 +333,11 @@ alpha_per_sample
 # VHL	0.000000	0.160599	0.565287	0.360409	0.000000	0.277992	0.634276	0.000000	0.317066	0.302499	...	0.158451	0.329637	0.000000	0.162921	0.000000	0.862380	0.162924	0.356652	0.152647	0.606802
 # 9 rows × 40 columns
 
+
+
+
 ## Compute THE mutabilities
 for sample in samples:
-
-    mutations_in_sample = pd.DataFrame()
 
     # iterate over all genes using the name of the gene and
     #    the alpha for which we should correct the mutability
@@ -330,8 +351,8 @@ for sample in samples:
         # adjust the probability vector by the value of alpha
         #   corresponding to that particular gene in that sample
         mut_probability_sample_gene[sample] = mut_probability_sample_gene[sample] * alpha
-        mut_probability_sample_gene.to_csv(f"/workspace/datasets/transfer/ferran_to_ferriol/omega_tests/mutabilities/mutability.{sample}.{gen}.tsv",
-                                           header = True,
-                                           index = False,
-                                           sep = "\t")
+        mut_probability_sample_gene.to_csv(f"/home/fcalvet/projects/omega/omega/tests_ferriol/mutabilities/mutability.{sample}.{gen}.tsv",
+                                            header = True,
+                                            index = False,
+                                            sep = "\t")
 

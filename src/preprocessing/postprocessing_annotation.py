@@ -133,23 +133,23 @@ def build_context_mut_simple(x, context_size = 3, nucl_dict = { "A":"T", "C":"G"
     return f"{x['CONTEXT']}>{x['ALT']}"
 
 
-all_possible_muts = pd.read_csv(f"/home/fcalvet/projects/omega/omega/tests_ferriol/KidneyPanel.sites.VEP_annotated.tsv",
+all_possible_sites = pd.read_csv(f"/home/fcalvet/projects/omega/omega/tests_ferriol/KidneyPanel.sites.VEP_annotated.tsv",
                                 sep = "\t", header = 0)
 
-all_possible_muts[["CHROM", "POS", "MUT" ]] = all_possible_muts.iloc[:,0].str.split("_", expand = True)
-all_possible_muts[["REF", "ALT"]] = all_possible_muts["MUT"].str.split("/", expand = True)
-all_possible_muts["POS"] = all_possible_muts["POS"].astype(int)
+all_possible_sites[["CHROM", "POS", "MUT" ]] = all_possible_sites.iloc[:,0].str.split("_", expand = True)
+all_possible_sites[["REF", "ALT"]] = all_possible_sites["MUT"].str.split("/", expand = True)
+all_possible_sites["POS"] = all_possible_sites["POS"].astype(int)
 
 
-all_possible_muts = all_possible_muts[['#Uploaded_variation', 'Location', 'Allele', 'Consequence',
+all_possible_sites = all_possible_sites[['#Uploaded_variation', 'Location', 'Allele', 'Consequence',
                                         'IMPACT', 'SYMBOL', 'CHROM', 'POS', 'MUT', 'REF', 'ALT']]
 
-all_possible_muts["TYPE"] = all_possible_muts[["REF", "ALT"]].apply(vartype, axis = 1)
-all_possible_muts = all_possible_muts[all_possible_muts["TYPE"] == "SNV"].reset_index(drop = True)
+all_possible_sites["TYPE"] = all_possible_sites[["REF", "ALT"]].apply(vartype, axis = 1)
+all_possible_sites = all_possible_sites[all_possible_sites["TYPE"] == "SNV"].reset_index(drop = True)
 
 
 # work to improve this function
-annotated_variants = VEP_annotation_to_single_row(all_possible_muts, canonical_only = False)
+annotated_variants = VEP_annotation_to_single_row(all_possible_sites, canonical_only = False)
 
 
 # add a new column containing a single consequence per variant
@@ -169,7 +169,7 @@ annotated_variants["CONTEXT"] = annotated_variants_context.apply(build_context_m
 annotated_variants_reduced = annotated_variants[['CHROM', 'POS', 'REF', 'ALT',
                                                     'MUT_ID', 'SYMBOL',
                                                     'Consequence_broader', 'CONTEXT']]
-all_possible_muts.columns = ['CHROM', 'POS', 'REF', 'ALT', 'MUT_ID', 'GENE', 'IMPACT', 'CONTEXT_MUT']
+all_possible_sites.columns = ['CHROM', 'POS', 'REF', 'ALT', 'MUT_ID', 'GENE', 'IMPACT', 'CONTEXT_MUT']
 annotated_variants_reduced = annotated_variants_reduced.sort_values(by = ['CHROM', 'POS', 'REF', 'ALT'] ).reset_index(drop = True)
 annotated_variants_reduced.head()
 
