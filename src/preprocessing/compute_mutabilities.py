@@ -8,11 +8,19 @@ import numpy as np
 from utils import *
 
 depth_dataframe_file = "/workspace/datasets/prominent/data/kidney/depth/2023-06-30.kidney_panel.chr.633.tsv.gz"
+
 mutations_file = "/workspace/datasets/prominent/data/kidney/mutations/2023-06-30.kidney.633.maf.annot.tsv.gz"
 
-# check which is the difference between these two
 # all_possible_sites_annotated_file = "/workspace/datasets/transfer/ferran_to_ferriol/omega_tests/KidneyPanel.all_SNVs.bed_panel.annotation_summary.tsv"
 all_possible_sites_annotated_file = "/workspace/datasets/transfer/ferran_to_ferriol/omega_tests/KidneyPanel.all_SNVs.bed_panel.annotation_summary2.tsv"
+
+
+## Output
+# 
+table_muts_x_sample_gene_impact_context = "/workspace/datasets/transfer/ferran_to_ferriol/v2023-08-02_data/mutations_per_gene_impact_context.count.tsv"
+mutability_path = "/home/fcalvet/projects/omega/omega/tests_ferriol/mutabilities2"
+# check that mutability_path exists or otherwise create it
+
 
 ##
 # Read files
@@ -44,7 +52,15 @@ minimal_maf = minimal_maf.drop("TYPE", axis = 1)
 ##
 annotated_minimal_maf = minimal_maf.merge(all_possible_sites_annotated, on = ["CHROM", "POS", "REF", "ALT"], how = "left")
 
+obs_muts_per_gene_impact_context_sample_long = annotated_minimal_maf.groupby(by = ['SAMPLE_ID', "GENE", "IMPACT", "CONTEXT_MUT"]).count()
+obs_muts_per_gene_impact_context_sample_long.columns = ["COUNT"]
+obs_muts_per_gene_impact_context_sample_long = obs_muts_per_gene_impact_context_sample_long.reset_index()
 
+
+obs_muts_per_gene_impact_context_sample_long.to_csv(table_muts_x_sample_gene_impact_context,
+                                                    header = True,
+                                                    index = False,
+                                                    sep = "\t")
 
 
 ####
@@ -100,7 +116,7 @@ sites_per_gene_impact_context_sample_long = sites_per_gene_impact_context_sample
 obs_muts_per_gene_impact_context_sample_long = annotated_minimal_maf.groupby(by = ["SAMPLE_ID", "GENE", "IMPACT"])["MUT_ID"].count()
 obs_muts_per_gene_impact_context_sample_long = obs_muts_per_gene_impact_context_sample_long.reset_index()
 obs_muts_per_gene_impact_context_sample_long.columns = list(obs_muts_per_gene_impact_context_sample_long.columns[:-1]) + ["COUNT"]
-# obs_muts_per_gene_impact_context_sample_long
+print(obs_muts_per_gene_impact_context_sample_long.head())
 
 
 # only synonymous mutations
@@ -330,7 +346,7 @@ for sample in samples:
         # adjust the probability vector by the value of alpha
         #   corresponding to that particular gene in that sample
         mut_probability_sample_gene[sample] = mut_probability_sample_gene[sample] * alpha
-        mut_probability_sample_gene.to_csv(f"/home/fcalvet/projects/omega/omega/tests_ferriol/mutabilities2/mutability.{sample}.{gen}.tsv",
+        mut_probability_sample_gene.to_csv(f"{mutability_path}/mutability.{sample}.{gen}.tsv",
                                             header = True,
                                             index = False,
                                             sep = "\t")
