@@ -5,44 +5,21 @@ import json, itertools
 import pandas as pd
 import numpy as np
 
-def vartype(x,
-            letters = ['A', 'T', 'C', 'G'],
-            len_SV_lim = 100
-            ):
-        
-    if ">" in (x["REF"] + x["ALT"]) or "<" in (x["REF"] + x["ALT"]):
-        return "SV"
-    
-    elif len(x["REF"]) > (len_SV_lim+1) or len(x["ALT"]) > (len_SV_lim+1) :
-        return "SV"
-    
-    elif x["REF"] in letters and x["ALT"] in letters:
-        return "SNV"
-    
-    elif len(x["REF"]) == len(x["ALT"]):
-        return "MNV"
-    
-    elif x["REF"] == "-" or ( len(x["REF"]) == 1 and x["ALT"].startswith(x["REF"]) ):
-        return "INSERTION"
-    
-    elif x["ALT"] == "-" or ( len(x["ALT"]) == 1 and x["REF"].startswith(x["ALT"]) ):
-        return "DELETION"
-    
-    return "COMPLEX"
+from utils import *
 
 depth_dataframe_file = "/workspace/datasets/prominent/data/kidney/depth/2023-06-30.kidney_panel.chr.633.tsv.gz"
 mutations_file = "/workspace/datasets/prominent/data/kidney/mutations/2023-06-30.kidney.633.maf.annot.tsv.gz"
 
 # check which is the difference between these two
-all_possible_sites_file = "/workspace/datasets/transfer/ferran_to_ferriol/omega_tests/KidneyPanel.all_SNVs.bed_panel.annotation_summary.tsv"
-all_variants_annotated = "/home/fcalvet/projects/omega/omega/tests_ferriol/KidneyGenes.canonical_transcripts_CDS.VEPannotated.tsv"
+# all_possible_sites_annotated_file = "/workspace/datasets/transfer/ferran_to_ferriol/omega_tests/KidneyPanel.all_SNVs.bed_panel.annotation_summary.tsv"
+all_possible_sites_annotated_file = "/workspace/datasets/transfer/ferran_to_ferriol/omega_tests/KidneyPanel.all_SNVs.bed_panel.annotation_summary2.tsv"
 
 ##
 # Read files
 ##
 
 # Read all possible mutations annotated by VEP
-all_possible_sites_annotated = pd.read_csv(all_variants_annotated, sep = "\t", header = 0)
+all_possible_sites_annotated = pd.read_csv(all_possible_sites_annotated_file, sep = "\t", header = 0)
 
 
 # Read depth matrix
@@ -73,8 +50,10 @@ annotated_minimal_maf = minimal_maf.merge(all_possible_sites_annotated, on = ["C
 ####
 ## HERE STARTS THE PRE-PROCESSING
 ####
-samples = list(minimal_maf["SAMPLE_ID"].unique())
-
+samples_muts = list(minimal_maf["SAMPLE_ID"].unique())
+samples_depths = list(depth_dataframe.columns[2:])
+samples = list(set(samples_muts).intersection(samples_depths))
+print(f"{len(samples)} samples maintained starting from {len(samples_muts)} samples starting from the mutations file and {len(samples_depths)} samples from the depths file.")
 
 ##
 # Count of all possible sites per sample (keeping only sites with enough depth)
@@ -351,7 +330,7 @@ for sample in samples:
         # adjust the probability vector by the value of alpha
         #   corresponding to that particular gene in that sample
         mut_probability_sample_gene[sample] = mut_probability_sample_gene[sample] * alpha
-        mut_probability_sample_gene.to_csv(f"/home/fcalvet/projects/omega/omega/tests_ferriol/mutabilities/mutability.{sample}.{gen}.tsv",
+        mut_probability_sample_gene.to_csv(f"/home/fcalvet/projects/omega/omega/tests_ferriol/mutabilities2/mutability.{sample}.{gen}.tsv",
                                             header = True,
                                             index = False,
                                             sep = "\t")

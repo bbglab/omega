@@ -5,6 +5,7 @@ import json, itertools
 import pandas as pd
 import numpy as np
 
+from utils import *
 
 CONSEQUENCES_LIST = [
     'transcript_ablation',
@@ -120,9 +121,8 @@ GROUPING_CONSEQUENCE_DICT = {
 }
 
 
-from FunctionsContextCounts import *
-from FunctionsAnnotateMutations import *
-def build_context_mut_simple(x, context_size = 3, nucl_dict = { "A":"T", "C":"G", "G":"C", "T":"A" }): 
+
+def build_context_mut_simple(x, nucl_dict = { "A":"T", "C":"G", "G":"C", "T":"A" }): 
     if x["TYPE"] != "SNV":
         return "-"
     # since the context is already corrected to only C and T in the middle we do not need to translate here
@@ -133,8 +133,17 @@ def build_context_mut_simple(x, context_size = 3, nucl_dict = { "A":"T", "C":"G"
     return f"{x['CONTEXT']}>{x['ALT']}"
 
 
-all_possible_sites = pd.read_csv(f"/home/fcalvet/projects/omega/omega/tests_ferriol/KidneyPanel.sites.VEP_annotated.tsv",
-                                sep = "\t", header = 0)
+
+# Input
+# VEP_output_file = "/home/fcalvet/projects/omega/omega/tests_ferriol/KidneyGenes.canonical_transcripts_CDS.VEPannotated.tsv"
+VEP_output_file = f"/home/fcalvet/projects/omega/omega/tests_ferriol/KidneyPanel.sites.VEP_annotated.tsv"
+
+# Output
+all_possible_sites_annotated_file = "/workspace/datasets/transfer/ferran_to_ferriol/omega_tests/KidneyPanel.all_SNVs.bed_panel.annotation_summary2.tsv"
+
+
+
+all_possible_sites = pd.read_csv(VEP_output_file, sep = "\t", header = 0)
 
 all_possible_sites[["CHROM", "POS", "MUT" ]] = all_possible_sites.iloc[:,0].str.split("_", expand = True)
 all_possible_sites[["REF", "ALT"]] = all_possible_sites["MUT"].str.split("/", expand = True)
@@ -166,15 +175,14 @@ annotated_variants_context = getContext_from_df(annotated_variants)
 annotated_variants["CONTEXT"] = annotated_variants_context.apply(build_context_mut_simple, axis = 1)
 
 
-annotated_variants_reduced = annotated_variants[['CHROM', 'POS', 'REF', 'ALT',
-                                                    'MUT_ID', 'SYMBOL',
-                                                    'Consequence_broader', 'CONTEXT']]
-all_possible_sites.columns = ['CHROM', 'POS', 'REF', 'ALT', 'MUT_ID', 'GENE', 'IMPACT', 'CONTEXT_MUT']
+annotated_variants_reduced = annotated_variants[['CHROM', 'POS', 'REF', 'ALT', 'MUT_ID', 'SYMBOL', 'Consequence_broader', 'CONTEXT']]
+annotated_variants_reduced.columns = ['CHROM', 'POS', 'REF', 'ALT', 'MUT_ID', 'GENE', 'IMPACT', 'CONTEXT_MUT']
 annotated_variants_reduced = annotated_variants_reduced.sort_values(by = ['CHROM', 'POS', 'REF', 'ALT'] ).reset_index(drop = True)
 annotated_variants_reduced.head()
 
 
-annotated_variants_reduced.to_csv(f"/home/fcalvet/projects/omega/KidneyPanel.all_SNVs.bed_panel.annotation_summary.tsv",
+#   f"/home/fcalvet/projects/omega/KidneyPanel.all_SNVs.bed_panel.annotation_summary.tsv",
+annotated_variants_reduced.to_csv(all_possible_sites_annotated_file,
                                     header = True,
                                     index = False,
                                     sep = "\t")
