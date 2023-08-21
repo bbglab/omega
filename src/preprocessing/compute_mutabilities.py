@@ -67,13 +67,12 @@ def compute_mutations_per_sample_gene_impact_context_table(maf, all_possible_sit
     obs_muts_per_gene_impact_context_sample_long = obs_muts_per_gene_impact_context_sample_long.reset_index()
     obs_muts_per_gene_impact_context_sample_long.columns = ['SAMPLE_ID', "GENE", "IMPACT", "CONTEXT_MUT", "COUNT"]
 
-
     # wide format
     obs_muts_per_gene_impact_context_sample_wide = obs_muts_per_gene_impact_context_sample_long.pivot(
                                                                 index= ['GENE', "IMPACT", "CONTEXT_MUT"], columns='SAMPLE_ID', values='COUNT').fillna(0).astype(int).reset_index()
     obs_muts_per_gene_impact_context_sample_wide.columns.name = None
     
-    return annotated_minimal_maf, obs_muts_per_gene_impact_context_sample_long, obs_muts_per_gene_impact_context_sample_wide
+    return annotated_minimal_maf, obs_muts_per_gene_impact_context_sample_wide
 
 
 
@@ -225,6 +224,42 @@ def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_da
     return expected_syn_per_gene_per_sample
 
 
+def compute_mutabilities(alpha_per_sample, mut_probability, samples):
+
+    mutability_all_samples = pd.DataFrame()
+
+    #####
+    # Compute the mutabilities
+    #####
+    for sample in samples:
+        mutability_sample = pd.DataFrame()
+
+        # iterate over all genes using the name of the gene and
+        #    the alpha for which we should correct the mutability
+        for gen, alpha in alpha_per_sample[sample].items():
+            # print(gen, alpha)
+
+            # take the mutation probability computed from the mutations observed
+            # and the sequencing depth of each context
+            mut_probability_sample_gene = mut_probability[["CONTEXT_MUT", sample]].copy()
+
+            # adjust the probability vector by the value of alpha
+            #   corresponding to that particular gene in that sample
+            mut_probability_sample_gene[sample] = mut_probability_sample_gene[sample] * alpha
+            mut_probability_sample_gene["GENE"] = gen
+
+            mutability_sample = pd.concat( (mutability_sample, mut_probability_sample_gene), axis = 0)
+            # mut_probability_sample_gene.to_csv(f"{mutability_path}/mutability.{sample}.{gen}.tsv",
+            #                                     header = True,
+            #                                     index = False,
+            #                                     sep = "\t")
+        
+        mutability_sample = mutability_sample.set_index(["GENE", "CONTEXT_MUT"])
+        mutability_all_samples = pd.concat( (mutability_all_samples, mutability_sample), axis = 1)
+
+    return mutability_all_samples.reset_index()
+
+
 
 def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                     depth_dataframe_file,
@@ -235,16 +270,16 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     """
     Wrapper for all the steps required to compute the mutabilities per sample, gene and context
     """
-        # Read files
+    # Read files
     all_possible_sites_annotated, depth_dataframe, maf = read_inputs(all_possible_sites_annotated_file,
                                                                         depth_dataframe_file,
                                                                         mutations_file
                                                                         )
 
     # Annotate mutations and compute table of observed mutations
-    annotated_minimal_maf, long, wide = compute_mutations_per_sample_gene_impact_context_table(
-                                                            maf, all_possible_sites_annotated
-                                                            )
+    annotated_minimal_maf, obs_muts_per_gene_impact_context_sample_wide = compute_mutations_per_sample_gene_impact_context_table(
+                                                                                maf, all_possible_sites_annotated
+                                                                                )
 
     # Define for which samples we have enough data
     samples = define_samples(depth_dataframe, annotated_minimal_maf)
@@ -256,17 +291,14 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
     # select only the samples that will be part of the analysis and store the table
     # obs_muts_per_gene_impact_context_sample_long = long
-    obs_muts_per_gene_impact_context_sample_wide = wide[wide["SAMPLE_ID"].isin(samples)].reset_index(drop = True)
+    obs_muts_per_gene_impact_context_sample_wide = obs_muts_per_gene_impact_context_sample_wide[
+                                                                    ["GENE", "IMPACT", "CONTEXT_MUT"] + samples
+                                                                ].copy()
 
-
-    ## Store table with observed mutations 
-    # obs_muts_per_gene_impact_context_sample_long.to_csv(table_muts_x_sample_gene_impact_context,
-    #                                                     header = True,
-    #                                                     index = False,
-    #                                                     sep = "\t")
 
     # *** OUTPUT 1 ***
-    obs_muts_per_gene_impact_context_sample_wide.to_csv(f"{table_muts_x_sample_gene_impact_context}.wide",
+    ## Store table with observed mutations 
+    obs_muts_per_gene_impact_context_sample_wide.to_csv(f"{table_muts_x_sample_gene_impact_context}",
                                                         header = True,
                                                         index = False,
                                                         sep = "\t")
@@ -291,7 +323,6 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_context_sample.groupby(by = ["GENE"])[samples].sum()
     obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_sample.reset_index()
 
-
     #####
     # Alpha computation
     #####
@@ -306,37 +337,17 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     alpha_per_sample = obs_syn_muts_per_gene_sample.set_index("GENE").divide( expected_syn_per_gene_per_sample.set_index("GENE") )
     # print(alpha_per_sample)
 
+    # compute the mutabilities by adjusting the mutational profile (mut_probability)
+    # by the value of alpha, to obtain an absolute mutability per context
+    mutability_all_samples = compute_mutabilities(alpha_per_sample, mut_probability, samples)
+
 
     # *** OUTPUT 2 *** 
-    # TODO choose best mutability output
-    #   - keep creating a file with the mutability per sample and gene
-    #   - decide if I create a single table with all the mutabilities per sample, gene, context
-    #           good part of these: instead of having missing files, we will find 0s in those places...
-    #   - table with the mutability per site per sample
-    #           good part of these: instead of having missing files, we will find 0s in those places...
-
-    #####
-    # Compute the mutabilities
-    #####
-    for sample in samples:
-
-        # iterate over all genes using the name of the gene and
-        #    the alpha for which we should correct the mutability
-        for gen, alpha in alpha_per_sample[sample].items():
-            # print(gen, alpha)
-
-            # take the mutation probability computed from the mutations observed
-            # and the sequencing depth of each context
-            mut_probability_sample_gene = mut_probability[["CONTEXT_MUT", sample]].copy()
-
-            # adjust the probability vector by the value of alpha
-            #   corresponding to that particular gene in that sample
-            mut_probability_sample_gene[sample] = mut_probability_sample_gene[sample] * alpha
-            mut_probability_sample_gene.to_csv(f"{mutability_path}/mutability.{sample}.{gen}.tsv",
-                                                header = True,
-                                                index = False,
-                                                sep = "\t")
-
+    # create a single table with all the mutabilities per sample, gene, context
+    mutability_all_samples.to_csv(f"{mutability_path}",
+                                        header = True,
+                                        index = False,
+                                        sep = "\t")
 
 
 
@@ -347,21 +358,18 @@ if __name__ == '__main__':
 
     ## Input
     depth_dataframe_file = "/workspace/datasets/prominent/data/kidney/depth/2023-06-30.kidney_panel.chr.633.tsv.gz"
-
     mutations_file = "/workspace/datasets/prominent/data/kidney/mutations/2023-06-30.kidney.633.maf.annot.tsv.gz"
-
     all_possible_sites_annotated_file = "./test/preprocessing/KidneyPanel.sites.bed_panel.annotation_summary.tsv"
 
     ## Output
-    table_muts_x_sample_gene_impact_context = "./test/preprocessing/mutations_per_gene_impact_context.count.tsv"
-    mutability_path = "./test/preprocessing/mutabilities"
-    # TODO: check that mutability_path exists or otherwise create it
+    table_muts_x_sample_gene_impact_context = "./test/preprocessing/mutations_per_sample_gene_impact_context.count.tsv"
+    mutabilities_table = "./test/preprocessing/mutability_per_sample_gene_context.tsv"
 
     compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                     depth_dataframe_file,
                                     mutations_file, 
                                     table_muts_x_sample_gene_impact_context,
-                                    mutability_path
+                                    mutabilities_table
                                     )
 
 
