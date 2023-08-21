@@ -31,6 +31,8 @@ def generate_all_sites_4VEP(input_bedfile, output_file_with_sites):
         positions_df = positions_df.iloc[1:,:3]
 
     positions_df.columns = ["CHROM", "START", "END"]
+    positions_df["CHROM"] = positions_df["CHROM"].astype(str)
+    positions_df[["START", "END"]] = positions_df[["START", "END"]].astype(int)
 
 
     positions_df["POS"] = [ list(range(x, y+1)) for x, y in positions_df[["START", "END"]].values ]

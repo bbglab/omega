@@ -10,7 +10,12 @@ def read_inputs(all_possible_sites_annotated_file, depth_dataframe_file, mutatio
     """
 
     # Read all possible mutations annotated by VEP
-    all_possible_sites_annotated = pd.read_csv(all_possible_sites_annotated_file, sep = "\t", header = 0)
+    all_possible_sites_annotated = pd.read_csv(all_possible_sites_annotated_file,
+                                                sep = "\t", header = 0,
+                                                dtype = {"CHROM" : str, "POS": int,
+                                                            "REF" : str, "ALT" : str,
+                                                            "MUT_ID" : str, "GENE" : str,
+                                                            "IMPACT" : str, "CONTEXT_MUT" : str} )
 
     # Read depth matrix
     depth_dataframe = pd.read_csv(depth_dataframe_file, header = 0, sep = "\t")
@@ -26,17 +31,28 @@ def read_inputs(all_possible_sites_annotated_file, depth_dataframe_file, mutatio
                                                                         "SAMPLE_ID" : str}
                                                                         )
 
+    # make sure that all the files have the chr prefix in the files
+    if not all_possible_sites_annotated["CHROM"].iloc[0].startswith("chr"):
+        all_possible_sites_annotated["CHROM"] = "chr" + all_possible_sites_annotated["CHROM"]
+    
+    if not depth_dataframe["CHROM"].iloc[0].startswith("chr"):
+        depth_dataframe["CHROM"] = "chr" + depth_dataframe["CHROM"]
+
+    if not maf["CHROM"].iloc[0].startswith("chr"):
+        maf["CHROM"] = "chr" + maf["CHROM"]
+
+    print(all_possible_sites_annotated.head(), depth_dataframe.head(), maf.head())
+
     return all_possible_sites_annotated, depth_dataframe, maf
 
 
-def compute_mutations_per_sample_gene_impact_context_table(maf, all_possible_sites_annotated):
+def annotate_mutations_using_vep(maf, all_possible_sites_annotated):
     """
     This function receives:
         - a mutations dataframe
         - a dataframe with all the possible SNV sites to be mutated
     and returns:
         - The observed mutations annotated
-        - a table with the number of mutations per sample, gene, impact and context
     """
 
     minimal_maf = maf[['CHROM', 'POS', 'REF', 'ALT', 'SAMPLE_ID']].copy()
@@ -51,28 +67,26 @@ def compute_mutations_per_sample_gene_impact_context_table(maf, all_possible_sit
     ##
     annotated_minimal_maf = minimal_maf.merge(all_possible_sites_annotated, on = ["CHROM", "POS", "REF", "ALT"], how = "left")
 
-    ##
-    # Count of all observed mutations per sample, gene, impact and context
-    ##
-    #   Required information:
-    #       Annotated mutations observed
-    #   Output:
-    #       observed mutations per:
-    #           sample
-    #           gene
-    #           impact
-    #           context
-    ##
+    return annotated_minimal_maf
+
+
+def compute_mutations_per_sample_gene_impact_context_table(annotated_minimal_maf):
+    """
+    This function receives:
+        - The observed mutations annotated
+    and returns:
+        - a table with the number of mutations per sample, gene, impact and context
+    """
     obs_muts_per_gene_impact_context_sample_long = annotated_minimal_maf.groupby(by = ['SAMPLE_ID', "GENE", "IMPACT", "CONTEXT_MUT"])["MUT_ID"].count()
     obs_muts_per_gene_impact_context_sample_long = obs_muts_per_gene_impact_context_sample_long.reset_index()
     obs_muts_per_gene_impact_context_sample_long.columns = ['SAMPLE_ID', "GENE", "IMPACT", "CONTEXT_MUT", "COUNT"]
-
+    
     # wide format
     obs_muts_per_gene_impact_context_sample_wide = obs_muts_per_gene_impact_context_sample_long.pivot(
                                                                 index= ['GENE', "IMPACT", "CONTEXT_MUT"], columns='SAMPLE_ID', values='COUNT').fillna(0).astype(int).reset_index()
     obs_muts_per_gene_impact_context_sample_wide.columns.name = None
-    
-    return annotated_minimal_maf, obs_muts_per_gene_impact_context_sample_wide
+
+    return obs_muts_per_gene_impact_context_sample_wide
 
 
 
@@ -265,7 +279,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                     depth_dataframe_file,
                                     mutations_file, 
                                     table_muts_x_sample_gene_impact_context,
-                                    mutability_path
+                                    mutability_table
                                     ):
     """
     Wrapper for all the steps required to compute the mutabilities per sample, gene and context
@@ -276,10 +290,8 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                                         mutations_file
                                                                         )
 
-    # Annotate mutations and compute table of observed mutations
-    annotated_minimal_maf, obs_muts_per_gene_impact_context_sample_wide = compute_mutations_per_sample_gene_impact_context_table(
-                                                                                maf, all_possible_sites_annotated
-                                                                                )
+    # Annotate mutations
+    annotated_minimal_maf = annotate_mutations_using_vep(maf, all_possible_sites_annotated)
 
     # Define for which samples we have enough data
     samples = define_samples(depth_dataframe, annotated_minimal_maf)
@@ -288,12 +300,8 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     annotated_minimal_maf = annotated_minimal_maf[annotated_minimal_maf["SAMPLE_ID"].isin(samples)].copy().reset_index(drop = True)
     depth_dataframe = depth_dataframe[["CHROM", "POS"] + samples].copy()
 
-
-    # select only the samples that will be part of the analysis and store the table
-    # obs_muts_per_gene_impact_context_sample_long = long
-    obs_muts_per_gene_impact_context_sample_wide = obs_muts_per_gene_impact_context_sample_wide[
-                                                                    ["GENE", "IMPACT", "CONTEXT_MUT"] + samples
-                                                                ].copy()
+    # compute table of observed mutations
+    obs_muts_per_gene_impact_context_sample_wide = compute_mutations_per_sample_gene_impact_context_table(annotated_minimal_maf)
 
 
     # *** OUTPUT 1 ***
@@ -344,7 +352,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
     # *** OUTPUT 2 *** 
     # create a single table with all the mutabilities per sample, gene, context
-    mutability_all_samples.to_csv(f"{mutability_path}",
+    mutability_all_samples.to_csv(f"{mutability_table}",
                                         header = True,
                                         index = False,
                                         sep = "\t")
