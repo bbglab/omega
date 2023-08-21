@@ -98,7 +98,12 @@ def define_samples(depth_dataframe, annotated_minimal_maf):
     samples_muts = list(annotated_minimal_maf["SAMPLE_ID"].unique())
     samples_depths = list(depth_dataframe.columns[2:])
     samples = sorted(list(set(samples_muts).intersection(samples_depths)))
-    
+    samples = ['K_10_1_A_1', 'K_11_1_A_1', 'K_12_1_A_1', 'K_13_1_A_1', 'K_14_1_A_1', 'K_15_1_A_1', 'K_16_1_A_1', 'K_17_1_A_1',
+                'K_18_1_A_1', 'K_19_1_A_1', 'K_20_1_A_1', 'K_21_1_A_1', 'K_22_1_A_1', 'K_23_1_A_1', 'K_24_1_A_1', 'K_25_1_A_1',
+                'K_26_1_A_1', 'K_27_1_A_1', 'K_28_1_A_1', 'K_29_1_A_1', 'K_30_1_A_1', 'K_31_1_A_1', 'K_32_1_A_1', 'K_33_1_A_1',
+                'K_34_1_A_1', 'K_35_1_A_1', 'K_36_1_A_1', 'K_37_1_A_1', 'K_38_1_A_1', 'K_39_1_A_1', 'K_40_1_A_1', 'K_41_1_A_1',
+                'K_42_1_A_1', 'K_43_1_A_1', 'K_44_1_A_1', 'K_5_1_A_1',  'K_6_1_A_1',  'K_7_1_A_1',  'K_8_1_A_1',  'K_9_1_A_1']
+
     print(f"{len(samples)} samples maintained starting from {len(samples_muts)} samples with mutations info and {len(samples_depths)} samples with depths info.")
     
     if len(set(samples_muts) - set(samples)) > 0:
@@ -316,6 +321,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                     depth_dataframe,
                                                     samples,
                                                     pseudocount = 0.5)
+
 
     # Compute expected synonymous mutations
     expected_syn_per_gene_per_sample = compute_expected_synonymous_mutations(all_possible_sites_annotated,
