@@ -1,0 +1,7 @@
+{
+    "vep_postprocessed_file": "./test/output/preprocessing/regions_sites.annotation_summary.tsv",
+    "depths_file"           : "./test/input/2023-06-30.kidney_panel.chr.633.tsv.gz",
+    "mutations_file"        : "./test/input/2023-06-30.kidney.633.maf.annot.tsv.gz",
+    "mutabilities_table"    : "test/output/preprocessing/mutability_per_sample_gene_context.correct_samples.tsv",
+    "table_observed_muts"   : "test/output/preprocessing/mutations_per_sample_gene_impact_context.count.correct_samples.tsv"
+}

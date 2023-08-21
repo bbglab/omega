@@ -41,8 +41,6 @@ def read_inputs(all_possible_sites_annotated_file, depth_dataframe_file, mutatio
     if not maf["CHROM"].iloc[0].startswith("chr"):
         maf["CHROM"] = "chr" + maf["CHROM"]
 
-    print(all_possible_sites_annotated.head(), depth_dataframe.head(), maf.head())
-
     return all_possible_sites_annotated, depth_dataframe, maf
 
 
@@ -319,6 +317,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                     samples,
                                                     pseudocount = 0.5)
 
+    # Compute expected synonymous mutations
     expected_syn_per_gene_per_sample = compute_expected_synonymous_mutations(all_possible_sites_annotated,
                                                                                 depth_dataframe,
                                                                                 mut_probability,

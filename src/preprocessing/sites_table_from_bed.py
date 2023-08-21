@@ -13,9 +13,9 @@ def get_non_ref(l, letters = {"A", "C", "G", "T"}):
 def to_int_if_possible(string):
     try:
         int(string)
-        return int(string)
+        return True
     except ValueError:
-        return None
+        return False
 
 def generate_all_sites_4VEP(input_bedfile, output_file_with_sites): 
 

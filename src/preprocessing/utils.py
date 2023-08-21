@@ -222,9 +222,9 @@ def VEP_annotation_to_single_row(df_annotation,
     ]]
     """
     
-    print(f"Initial number of rows:\t{df_annotation.shape}")
+    # print(f"Initial number of rows:\t{df_annotation.shape}")
     df_annotation = df_annotation.drop_duplicates().reset_index(drop = True)
-    print(f"Initial number without duplicates:\t{df_annotation.shape}")
+    # print(f"Initial number without duplicates:\t{df_annotation.shape}")
     
     
     # update the first column name to ID
@@ -250,7 +250,7 @@ def VEP_annotation_to_single_row(df_annotation,
 
 
         df_annotation_small = df_annotation_small.drop_duplicates()
-        print(f"Selecting specific columns and removing duplicates:\t{df_annotation.shape}")
+        # print(f"Selecting specific columns and removing duplicates:\t{df_annotation.shape}")
     
     else:
         # select a subset of the columns
@@ -270,7 +270,7 @@ def VEP_annotation_to_single_row(df_annotation,
 
 
         df_annotation_small = df_annotation_small.drop_duplicates()
-        print(f"Selecting specific columns and removing duplicates:\t{df_annotation.shape}")
+        # print(f"Selecting specific columns and removing duplicates:\t{df_annotation.shape}")
     
     
     
@@ -294,10 +294,10 @@ def VEP_annotation_to_single_row(df_annotation,
                                                                                             ],
                                                                                     keep='first')
     
-    print(f"Selecting row with highest impact per variant:\t{df_annotation_small_highest_impact.shape}")
+    # print(f"Selecting row with highest impact per variant:\t{df_annotation_small_highest_impact.shape}")
     returned_df = df_annotation.iloc[df_annotation_small_highest_impact.index.values,:].copy()
     returned_df = returned_df.reset_index(drop = True)
-    print(f"Selecting row with highest impact per variant:\t{returned_df.shape}")
+    # print(f"Selecting row with highest impact per variant:\t{returned_df.shape}")
 
     # update the Consequence column to containing a single consequence per variant
     returned_df["Consequence"] = returned_df["Consequence"].apply(get_single_annotation)
