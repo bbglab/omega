@@ -153,6 +153,7 @@ GROUPING_CONSEQUENCE_DICT = {
     'frameshift_variant': 'nonsense',
     'stop_lost': 'nonsense',
     'start_lost': 'nonsense',
+    
     'missense_variant': 'missense',
     'inframe_insertion': 'missense',
     'inframe_deletion': 'missense',
@@ -163,22 +164,27 @@ GROUPING_CONSEQUENCE_DICT = {
     
     'splice_donor_variant': 'essential_splice',
     'splice_acceptor_variant': 'essential_splice',
-    'splice_region_variant': 'essential_splice',
+    
     'splice_region_variant': 'splice_region',
     'splice_donor_5th_base_variant': 'splice_region',
     'splice_donor_region_variant': 'splice_region',
     'splice_polypyrimidine_tract_variant': 'splice_region',
+    
     'synonymous_variant': 'synonymous',
     'incomplete_terminal_codon_variant': 'synonymous',
     'start_retained_variant': 'synonymous',
     'stop_retained_variant': 'synonymous',
+    
     'mature_miRNA_variant': 'non_coding_exon_region',
     '5_prime_UTR_variant': 'non_coding_exon_region',
     '3_prime_UTR_variant': 'non_coding_exon_region',
     'non_coding_transcript_exon_variant': 'non_coding_exon_region',
     'NMD_transcript_variant': 'non_coding_exon_region',
+    
     'intron_variant': 'intron_variant',
+    
     'non_coding_transcript_variant' : 'non_coding_transcript_variant',
+
     'upstream_gene_variant': 'non_genic_variant',
     'downstream_gene_variant': 'non_genic_variant',
     'TFBS_ablation': 'non_genic_variant',
