@@ -1,0 +1,8 @@
+{
+    "observed_mutations_file": "/home/fmuinos/projects/omega/test/mutations_per_sample_gene_impact_context.count.correct_samples.tsv",  
+    "mutability_file":         "/home/fmuinos/projects/omega/test/mutability_per_sample_gene_context.correct_samples.tsv",
+    "bed_regions_file"  :      "/home/fmuinos/projects/omega/test/kidneypanel4oncodrivefml.bed5.bed",
+    "depths_file"       :      "/home/fmuinos/projects/omega/test/2023-06-30.kidney_panel.633.tsv.gz",
+    "vep_annotation_file":     "/home/fmuinos/projects/omega/test/KidneyPanel.sites.VEP_annotated.tsv",
+    "grouping_folder":         "/home/fmuinos/projects/omega/test/"
+}
