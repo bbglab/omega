@@ -1,184 +1,87 @@
-# bayes run cli
-# --input: table with columns chr | pos | ref | mut | context | gene | impact | samples (reads) | samples (mutabilities)
-# --impact: grouping of impacts json dict
-# --genes: grouping of genes json dict
-# --samples: grouping of samples json dict
-
-# mle run cli
-# --input: table with columns chr | pos | ref | mut | context | gene | impact | samples (reads) | samples (mutabilities)
-# --impact: grouping of impacts json dict
-# --genes: grouping of genes json dict
-# --samples: grouping of samples json dict
-
-# notes: 
-# use typer for cli
-
-# input mutations should be given in some canonical order, e.g.
-# chr, pos, alt
-
-# mutability col in the input
-# is calculated using the no. syn mutations and depth per position
-
 import os
+import json
 import typer
 import tqdm
+from enum import Enum
 from multiprocessing import Pool
 
 import pandas as pd
 import numpy as np
 
-from assemble import Configurator, Assembler
-from utils import dict_append
-from omega import dNdS
+from assemble import Grouping, Assembler
+from omega import bayes_infer, mle_infer
 
 import warnings
 warnings.filterwarnings(module='tensorflow*', action='ignore')
 
+
 app = typer.Typer()
 
 
-def bayes_infer(args):
+def prepare_data(input_fn):
     
-    gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n = args
+    with open(input_fn, 'rt') as f:
+        d = json.load(f)
 
-    res = {}
+    mut_counts = pd.read_csv(d['observed_mutations_file'], sep='\t')
+    mutability = pd.read_csv(d['mutability_file'], sep='\t')
+    depths = pd.read_csv(d['depths_file'], sep='\t')
+    regions = pd.read_csv(d['bed_regions_file'], sep='\t')
+    vep = pd.read_csv(d['vep_annotation_file'], sep='\t')
+
+    # group collects the grouping of samples, genes and impacts
+    # the group instance will be passed to the Assembler so that 
+    # it can create a data grid in accordance with the grouping
+    group = Grouping()
+    group.add_group('samples', os.path.join(d['grouping_folder'], 'group_samples.json'))
+    group.add_group('genes', os.path.join(d['grouping_folder'], 'group_genes.json'))
+    group.add_group('impacts', os.path.join(d['grouping_folder'], 'group_impacts.json'))
+
+    ground_control = Assembler(depths, regions, vep, mut_counts, mutability, group)
+    return list(ground_control.input_generator())
     
-    dnds_calculator = dNdS(l, n)
 
-    res['gene'] = [gene_term]
-    res['sample'] = [sample_term]
-    res['impact'] = [impact_term]
+def bayes(input_json, output_fn, cores=4):
 
-    try:
-        chain = dnds_calculator.bayes_run()
-        res['mean_dnds'] = [np.mean(chain)]
-        res['perc_25_dnds'] = [np.percentile(chain, 25)]
-        res['perc_75_dnds'] = [np.percentile(chain, 75)]
-    except:
-        res['mean_dnds'] = [None]
-        res['perc_25_dnds'] = [None]
-        res['perc_75_dnds'] = [None]
-    
-    return res
-
-
-def mle_infer(args):
-
-    gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n = args
-
-    res = {}
-    
-    dnds_calculator = dNdS(l, n)
-
-    res['gene'] = [gene_term]
-    res['sample'] = [sample_term]
-    res['impact'] = [impact_term]
-
-    try:
-        omega_hat, pvalue = dnds_calculator.mle_run()
-        res['dnds'] = [omega_hat]
-        res['pvalue'] = [pvalue]
-    except:
-        res['dnds'] = [None]
-        res['pvalue'] = [None]
-        
-    return res
-
-
-@app.command()
-def bayes(conf_folder: str, data_fn: str, mut_counts_fn: str, output_fn: str, cores=4):
-
-    conf = Configurator()
-
-    # conf collects the groupings of samples, genes and impacts
-    # the conf object will be passed to the Assembler so that it can create a data grid in accordance with the groupings
-
-    conf.add_conf('samples', os.path.join(conf_folder, 'group_samples.json'))
-    conf.add_conf('genes', os.path.join(conf_folder, 'group_genes.json'))
-    conf.add_conf('impacts', os.path.join(conf_folder, 'group_impacts.json'))
-    
-    # load data: depth per site per sample
-    # for testing data_fn = '../test/wide_input.tsv.gz'
-
-    data = pd.read_csv(data_fn, sep='\t')
-
-    # load data: mutation counts
-    # for testing mut_counts_fn = '/workspace/datasets/transfer/ferran_to_ferriol/all_mutations_per_gene_impact_context.tsv'
-
-    mut_counts = pd.read_csv(mut_counts_fn, sep='\t')
-
-    # prepare input grid
-    # input_grid is a generator that spits tuples
-    # (gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n)
-    # covering all the analysis cases specified by the groupings
-
-    input_grid = list(Assembler(data, mut_counts, conf).input_generator())
-
+    input_grid = prepare_data(input_json)
     res = {}
     with Pool(4) as p:
         for d in tqdm.tqdm(p.imap(bayes_infer, input_grid), total=len(input_grid)):
-            res = dict_append(res, d)
-
+            res = {k: res.get(k, []) + d.get(k, []) for k in d}
     df = pd.DataFrame(res)
     df.to_csv(output_fn, sep='\t', index=False)
+
+
+def mle(input_json: str, output_fn: str, cores=4):
+
+    input_grid = prepare_data(input_json)
+    res = {}
+    for args in tqdm.tqdm(input_grid):
+        d = mle_infer(args)
+        res = {k: res.get(k, []) + d.get(k, []) for k in d}
+    df = pd.DataFrame(res)
+    df.to_csv(output_fn, sep='\t', index=False)
+
+
+class ModelType(str, Enum):
+    bayes = "bayes"
+    mle = "mle"
 
 
 @app.command()
-def mle(conf_folder: str, data_fn: str, mut_counts_fn: str, output_fn: str, cores=4):
+def run(input_json: str, output_fn: str, option: ModelType=ModelType.bayes, cores=4):
 
-    conf = Configurator()
-
-    # conf collects the groupings of samples, genes and impacts
-    # the conf object will be passed to the Assembler so that it can create a data grid in accordance with the groupings
-
-    conf.add_conf('samples', os.path.join(conf_folder, 'group_samples.json'))
-    conf.add_conf('genes', os.path.join(conf_folder, 'group_genes.json'))
-    conf.add_conf('impacts', os.path.join(conf_folder, 'group_impacts.json'))
-    
-    # load data: depth per site per sample
-    # for testing data_fn = '../test/wide_input.tsv.gz'
-
-    data = pd.read_csv(data_fn, sep='\t')
-
-    # load data: mutation counts
-    # for testing mut_counts_fn = '/workspace/datasets/transfer/ferran_to_ferriol/all_mutations_per_gene_impact_context.tsv'
-
-    mut_counts = pd.read_csv(mut_counts_fn, sep='\t')
-
-    # prepare input grid
-    # input_grid is a generator that spits tuples
-    # (gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n)
-    # covering all the analysis cases specified by the groupings
-
-    input_grid = list(Assembler(data, mut_counts, conf).input_generator())
-
-    res = {}
-
-    for args in tqdm.tqdm(input_grid):
-        
-        d = mle_infer(args)
-        res = dict_append(res, d)
-
-    df = pd.DataFrame(res)
-    df.to_csv(output_fn, sep='\t', index=False)
+    if option == 'bayes':
+        bayes(input_json, output_fn, cores=cores)
+    if option == 'mle':
+        mle(input_json, output_fn, cores=cores)
 
 
 if __name__ == "__main__":
 
     """
-    python src/main.py bayes test/ \
-    test/wide_input.tsv.gz \
-    /workspace/datasets/transfer/ferran_to_ferriol/all_mutations_per_gene_impact_context.tsv \
-    test/output/results_bayes.tsv \
-    --cores 2
-    """
-
-    """
-    python src/main.py mle test/ \
-    test/wide_input.tsv.gz \
-    /workspace/datasets/transfer/ferran_to_ferriol/all_mutations_per_gene_impact_context.tsv \
-    test/output/results_mle.tsv \
-    --cores 2
+    python src/main.py --option bayes --cores 2 test/input_estimation.json test/output_estimation_bayes.tsv
+    python src/main.py --option mle --cores 2 test/input_estimation.json test/output_estimation_mle.tsv
     """
     
     app()

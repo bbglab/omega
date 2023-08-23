@@ -1,13 +1,14 @@
 import os
 import itertools
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+import numpy as np
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-
 tfd = tfp.distributions
 tfb = tfp.bijectors
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 
 def trinucleotide_contexts():
@@ -32,8 +33,8 @@ def transform_bracket_context(bracket_context):
 def get_reparameterized_negative_binomial(mean, overdispersion):
     
     """
-    Is this reparameterization correct? Yes, it seems so.
-    We must assert: variance = mean + overdispersion * mean^2
+    This parameterization is consistent with: 
+    variance = mean + overdispersion * mean^2
     reference: https://github.com/tensorflow/probability/issues/372
     """
     
@@ -128,12 +129,13 @@ class dNdS:
     
     def bayes_run(self, debug=False):
         
-        # instantiate Poisson
-
+        # Lognormal-Poisson model
         model = tfd.JointDistributionSequential([
-            tfd.LogNormal(loc=0., scale=1.),     # dN/dS: https://en.wikipedia.org/wiki/Log-normal_distribution#/media/File:Log-normal-pdfs.png
-                                                 # we want a non-informative prior skewed towards >= 1
-            lambda dnds: tfd.Poisson(self.l * dnds),  # n: mutation count
+            tfd.LogNormal(loc=0., scale=1.),     
+            # dN/dS: https://en.wikipedia.org/wiki/Log-normal_distribution#/media/File:Log-normal-pdfs.png
+            # TODO: we want a non-informative prior centered at ~1, how skewed towards >= 1?
+            # n: mutation count
+            lambda dnds: tfd.Poisson(self.l * dnds),  
             ])
         
         def log_prob_func(omega):
@@ -145,6 +147,54 @@ class dNdS:
         
         return chain
         
+    
+def bayes_infer(args):
+    
+    gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n = args
+
+    res = {}
+    
+    dnds_calculator = dNdS(l, n)
+
+    res['gene'] = [gene_term]
+    res['sample'] = [sample_term]
+    res['impact'] = [impact_term]
+
+    try:
+        chain = dnds_calculator.bayes_run()
+        res['mean_dnds'] = [np.mean(chain)]
+        res['perc_25_dnds'] = [np.percentile(chain, 25)]
+        res['perc_75_dnds'] = [np.percentile(chain, 75)]
+    except:
+        res['mean_dnds'] = [None]
+        res['perc_25_dnds'] = [None]
+        res['perc_75_dnds'] = [None]
+    
+    return res
+
+
+def mle_infer(args):
+
+    gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n = args
+
+    res = {}
+    
+    dnds_calculator = dNdS(l, n)
+
+    res['gene'] = [gene_term]
+    res['sample'] = [sample_term]
+    res['impact'] = [impact_term]
+
+    try:
+        omega_hat, pvalue = dnds_calculator.mle_run()
+        res['dnds'] = [omega_hat]
+        res['pvalue'] = [pvalue]
+    except:
+        res['dnds'] = [None]
+        res['pvalue'] = [None]
+        
+    return res
+
 
 if __name__ == '__main__':
     pass

@@ -1,5 +1,10 @@
 from itertools import product
 
+from bgreference import hg38
+
+
+cb = dict(zip('ACGT', 'TGCA'))
+
 
 def canonical_channels(): 
 
@@ -8,11 +13,13 @@ def canonical_channels():
     contexts_tuples = [(a, b) for a, b in product(subs, flanks)]
     sorted_contexts_tuples = sorted(contexts_tuples, key=lambda x: (x[0], x[1]))
     sorted_contexts = [b[0] + a[0] + b[1] + '>' + a[1] for a, b in sorted_contexts_tuples]
-    
     return sorted_contexts
 
 
-def dict_append(d1, d2):
-    
-    return {k: d1.get(k, []) + d2.get(k, []) for k in d2}
-    
+def transform_context(chr_, pos, mut):
+    ref, alt = tuple(mut.split('/'))
+    ref_triplet = hg38(chr_, pos-1, size=3)
+    if ref_triplet[1] not in ['C', 'T']:
+        ref_triplet = ''.join(list(map(lambda x: cb[x], ref_triplet[::-1])))
+        alt = cb[alt]
+    return ref_triplet + '>' + alt
