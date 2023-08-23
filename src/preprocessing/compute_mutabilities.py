@@ -212,12 +212,6 @@ def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_da
     sites_per_gene_impact_context_sample_wide = all_possible_sites_per_sample.groupby(
                                                                 by = ["GENE", "IMPACT", "CONTEXT_MUT"])[samples].sum().reset_index()
 
-    # # long format
-    # sites_per_gene_impact_context_sample_long = sites_per_gene_impact_context_sample_wide.melt(id_vars = ["GENE", "IMPACT", "CONTEXT_MUT"],
-    #                                                                                             var_name = "SAMPLE_ID",
-    #                                                                                             value_name = "COUNT")
-    # # sites_per_gene_impact_context_sample_long
-
 
     ## Get synonymous sites counts per gene, impact, context and sample
     syn_sites_per_gene_impact_context_sample = sites_per_gene_impact_context_sample_wide[

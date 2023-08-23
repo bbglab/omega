@@ -296,7 +296,7 @@ def VEP_annotation_to_single_row(df_annotation,
                                                                 )
 
     df_annotation_small_highest_impact = df_annotation_small_sorted.drop_duplicates(subset=['MUT_ID'
-                                                                                            # , 'SYMBOL'
+                                                                                            , 'SYMBOL'
                                                                                             ],
                                                                                     keep='first')
     
