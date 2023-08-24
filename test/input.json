@@ -1,5 +1,0 @@
-{
-    "bed_regions_file"  : "./test/input/kidneypanel4oncodrivefml.bed5.bed",
-    "depths_file"       : "./test/input/2023-06-30.kidney_panel.chr.633.tsv.gz",
-    "mutations_file"    : "./test/input/2023-06-30.kidney.633.maf.annot.tsv.gz"
-}
