@@ -161,4 +161,4 @@ cython_debug/
 
 
 
-tests_ferriol/
+test_ferriol/

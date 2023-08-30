@@ -2,9 +2,9 @@ import os
 import json
 import sys
 
-from src.preprocessing.sites_table_from_bed import generate_all_sites_4VEP
-from src.preprocessing.postprocessing_annotation import vep2summarizedannotation
-from src.preprocessing.compute_mutabilities import compute_mutabilities_wrapper
+from sites_table_from_bed import generate_all_sites_4VEP
+from postprocessing_annotation import vep2summarizedannotation
+from compute_mutabilities import compute_mutabilities_wrapper
 
 # Read JSON data from the file
 with open(sys.argv[1], 'r') as json_file:
@@ -47,7 +47,7 @@ elif 'vep_output_file' in input_data.keys():
         print(f"Using the raw VEP output available at:\n{input_data['vep_output_file']}")
 
         vep_output_file = input_data['vep_output_file']
-        vep_postprocessed_file = "./test/output/preprocessing/regions_sites.annotation_summary.tsv"
+        vep_postprocessed_file = "./regions_sites.annotation_summary.tsv"
 
     else:
         print(f"The provided raw VEP output does NOT EXIST at:\n{input_data['vep_output_file']}")
@@ -58,8 +58,8 @@ elif 'bed_regions_file' in input_data.keys():
         print(f"Using the BED file available at:\n{input_data['bed_regions_file']}")
 
         bed_regions_file = input_data['bed_regions_file']
-        vep_input_file = "./test/output/preprocessing/regions_sites.4VEP.tsv"
-        vep_postprocessed_file = "./test/output/preprocessing/regions_sites.annotation_summary.tsv"
+        vep_input_file = "./regions_sites.4VEP.tsv"
+        vep_postprocessed_file = "./regions_sites.annotation_summary.tsv"
 
     else:
         print(f"The provided BED file does NOT EXIST at:\n{input_data['bed_regions_file']}")
@@ -78,7 +78,7 @@ if 'table_observed_muts' in input_data.keys():
         both_avail += 1
     table_observed_muts = input_data['table_observed_muts']
 else:
-    table_observed_muts = "./test/output/preprocessing/mutations_per_sample_gene_impact_context.count.tsv"
+    table_observed_muts = "./mutations_per_sample_gene_impact_context.count.tsv"
 
 if 'mutabilities_table' in input_data.keys():
     if os.path.exists(input_data['mutabilities_table']):
@@ -86,7 +86,7 @@ if 'mutabilities_table' in input_data.keys():
         both_avail += 1
     mutabilities_table = input_data['mutabilities_table']
 else:
-    mutabilities_table = "./test/output/preprocessing/mutability_per_sample_gene_context.tsv"
+    mutabilities_table = "./mutability_per_sample_gene_context.tsv"
 
 if both_avail == 2:
     print("Both tables are already available, preprocessing not run.")

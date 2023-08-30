@@ -1,8 +1,8 @@
 {
     "observed_mutations_file": "./mutations_per_sample_gene_impact_context.count.correct_samples.tsv",
     "mutability_file":         "./mutability_per_sample_gene_context.correct_samples.tsv",
-    "bed_regions_file"  :      "./kidneypanel4oncodrivefml.bed5.bed",
-    "depths_file"       :      "./2023-06-30.kidney_panel.633.tsv.gz",
-    "vep_annotation_file":     "./KidneyPanel.sites.VEP_annotated.tsv",
+    "bed_regions_file"  :      "./input/kidneypanel.oncodrivefml.bed5.bed",
+    "depths_file"       :      "./input/2023-06-30.kidney_panel.633.tsv.gz",
+    "vep_annotation_file":     "./input/KidneyPanel.sites.VEP_annotated.tsv",
     "grouping_folder":         "./group/"
 }
