@@ -60,21 +60,36 @@ def annotate_mutations_using_vep(maf, all_possible_sites_annotated):
     minimal_maf = minimal_maf[minimal_maf["TYPE"] == "SNV"].reset_index(drop = True)
     minimal_maf = minimal_maf.drop("TYPE", axis = 1)
 
-    ##
-    # Annotate observed mutations
-    ##
-    annotated_minimal_maf = minimal_maf.merge(all_possible_sites_annotated, on = ["CHROM", "POS", "REF", "ALT"], how = "left")
+    ###
+    ## Annotate observed mutations
+    # I selected the inner strategy so that variants that fall outside of the regions
+    # of possible sites are not included in any of the analysis nor the counts
+    ###
+    # TODO
+    # revise whether we want to keep it as inner or we want left
+    # I prefer inner since if the user provides mutations outside
+    # the areas of interest those are excluded from the analysis
+    annotated_minimal_maf = minimal_maf.merge(all_possible_sites_annotated, on = ["CHROM", "POS", "REF", "ALT"], how = "inner")
 
     return annotated_minimal_maf
 
 
-def compute_mutations_per_sample_gene_impact_context_table(annotated_minimal_maf):
+def compute_mutations_per_sample_gene_impact_context_table(annotated_minimal_maf,
+                                                            impacts_to_exclude = ["non_genic_variant", "intron_variant"]):
+    # TODO
+    # revise the default list of excluded impacts
     """
     This function receives:
         - The observed mutations annotated
     and returns:
         - a table with the number of mutations per sample, gene, impact and context
     """
+    # TODO
+    # revise whether we are interested in doing it this way or not
+    # filter annotations/positions that we are not interested in
+    annotated_minimal_maf = annotated_minimal_maf[annotated_minimal_maf["GENE"] != '-']
+    annotated_minimal_maf = annotated_minimal_maf[~annotated_minimal_maf["IMPACT"].isin(impacts_to_exclude)].reset_index(drop = True)
+
     obs_muts_per_gene_impact_context_sample_long = annotated_minimal_maf.groupby(by = ['SAMPLE_ID', "GENE", "IMPACT", "CONTEXT_MUT"])["MUT_ID"].count()
     obs_muts_per_gene_impact_context_sample_long = obs_muts_per_gene_impact_context_sample_long.reset_index()
     obs_muts_per_gene_impact_context_sample_long.columns = ['SAMPLE_ID', "GENE", "IMPACT", "CONTEXT_MUT", "COUNT"]
@@ -98,11 +113,11 @@ def define_samples(depth_dataframe, annotated_minimal_maf):
     samples_muts = list(annotated_minimal_maf["SAMPLE_ID"].unique())
     samples_depths = list(depth_dataframe.columns[2:])
     samples = sorted(list(set(samples_muts).intersection(samples_depths)))
-    # samples = ['K_10_1_A_1', 'K_11_1_A_1', 'K_12_1_A_1', 'K_13_1_A_1', 'K_14_1_A_1', 'K_15_1_A_1', 'K_16_1_A_1', 'K_17_1_A_1',
-    #             'K_18_1_A_1', 'K_19_1_A_1', 'K_20_1_A_1', 'K_21_1_A_1', 'K_22_1_A_1', 'K_23_1_A_1', 'K_24_1_A_1', 'K_25_1_A_1',
-    #             'K_26_1_A_1', 'K_27_1_A_1', 'K_28_1_A_1', 'K_29_1_A_1', 'K_30_1_A_1', 'K_31_1_A_1', 'K_32_1_A_1', 'K_33_1_A_1',
-    #             'K_34_1_A_1', 'K_35_1_A_1', 'K_36_1_A_1', 'K_37_1_A_1', 'K_38_1_A_1', 'K_39_1_A_1', 'K_40_1_A_1', 'K_41_1_A_1',
-    #             'K_42_1_A_1', 'K_43_1_A_1', 'K_44_1_A_1', 'K_5_1_A_1',  'K_6_1_A_1',  'K_7_1_A_1',  'K_8_1_A_1',  'K_9_1_A_1']
+    samples = ['K_10_1_A_1', 'K_11_1_A_1', 'K_12_1_A_1', 'K_13_1_A_1', 'K_14_1_A_1', 'K_15_1_A_1', 'K_16_1_A_1', 'K_17_1_A_1',
+                'K_18_1_A_1', 'K_19_1_A_1', 'K_20_1_A_1', 'K_21_1_A_1', 'K_22_1_A_1', 'K_23_1_A_1', 'K_24_1_A_1', 'K_25_1_A_1',
+                'K_26_1_A_1', 'K_27_1_A_1', 'K_28_1_A_1', 'K_29_1_A_1', 'K_30_1_A_1', 'K_31_1_A_1', 'K_32_1_A_1', 'K_33_1_A_1',
+                'K_34_1_A_1', 'K_35_1_A_1', 'K_36_1_A_1', 'K_37_1_A_1', 'K_38_1_A_1', 'K_39_1_A_1', 'K_40_1_A_1', 'K_41_1_A_1',
+                'K_42_1_A_1', 'K_43_1_A_1', 'K_44_1_A_1', 'K_5_1_A_1',  'K_6_1_A_1',  'K_7_1_A_1',  'K_8_1_A_1',  'K_9_1_A_1']
 
     print(f"{len(samples)} samples maintained starting from {len(samples_muts)} samples with mutations info and {len(samples_depths)} samples with depths info.")
     
@@ -140,6 +155,15 @@ def compute_mutational_profile(annotated_minimal_maf, all_possible_sites_annotat
 
     # make sure to count each mutation only once (avoid annotation issues)
     annotated_minimal_maf = annotated_minimal_maf[["SAMPLE_ID", "CONTEXT_MUT", "MUT_ID"]].drop_duplicates().reset_index(drop = True)
+    # TODO
+    # maybe we should make sure that no mutation is counted
+    # if it falls in a position outside the ones for which we have values of depth?
+    # it should not happen but who knows...
+    ###
+    # it could work by defining the intersection of the three dataframes
+    # in terms of positions the same way as we do with the samples
+
+
 
     # count the mutations per sample and per context
     counts_x_sample_context_long = annotated_minimal_maf.groupby(by = ["SAMPLE_ID", "CONTEXT_MUT"])["MUT_ID"].count().reset_index()
@@ -157,6 +181,9 @@ def compute_mutational_profile(annotated_minimal_maf, all_possible_sites_annotat
     # merge the dataframe of all possible sites with the dataframe of the depth per site per sample
     
     ## TODO make a decision here (use depth or counts?)
+    # I think depth makes more sense
+    # in case there are regions with very small coverage we can make sure
+    # that they don't have the same contribution to the background counts...
     ###
     # We could also normalize by the trinucleotide counts, not trinucleotide depth
     # # how = "left").groupby(by = "CONTEXT_MUT")[samples].count()
@@ -274,10 +301,6 @@ def compute_mutabilities(alpha_per_sample, mut_probability, samples):
             mut_probability_sample_gene["GENE"] = gen
 
             mutability_sample = pd.concat( (mutability_sample, mut_probability_sample_gene), axis = 0)
-            # mut_probability_sample_gene.to_csv(f"{mutability_path}/mutability.{sample}.{gen}.tsv",
-            #                                     header = True,
-            #                                     index = False,
-            #                                     sep = "\t")
         
         mutability_sample = mutability_sample.set_index(["GENE", "CONTEXT_MUT"])
         mutability_all_samples = pd.concat( (mutability_all_samples, mutability_sample), axis = 1)

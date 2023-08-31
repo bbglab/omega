@@ -31,26 +31,20 @@ def generate_all_sites_4VEP(input_bedfile, output_file_with_sites):
         positions_df = positions_df.iloc[1:,:3]
 
     positions_df.columns = ["CHROM", "START", "END"]
-    positions_df["CHROM"] = positions_df["CHROM"].astype(str)
+    positions_df["CHROM"] = positions_df["CHROM"].astype(str).str.replace("chr", "")
     positions_df[["START", "END"]] = positions_df[["START", "END"]].astype(int)
 
 
     positions_df["POS"] = [ list(range(x, y+1)) for x, y in positions_df[["START", "END"]].values ]
     positions_df = positions_df.explode("POS").reset_index(drop = True)
     positions_df = positions_df[["CHROM", "POS"]]
-    positions_df.columns = ["CHROM", "POS"]
-
 
     positions_df["REF"] = positions_df.apply(get_pos_in_row, axis = 1)
     positions_df["ALT"] = positions_df["REF"].apply(get_non_ref)
 
     positions_df = positions_df.explode("ALT").reset_index(drop = True)
-    positions_df.index.name = "SAMPLE"
 
-    positions_df = positions_df.reset_index(drop = True)
-
-
-    # 1   881907    881906    -/C   +
+    # 1   881906    881906    T/C   +
     positions_df["MUTATION"] = positions_df["REF"].astype(str) + "/" + positions_df["ALT"].astype(str)
     positions_df["STRAND"] = "+"
     positions_df_end = positions_df[['CHROM', 'POS', 'POS', 'MUTATION', 'STRAND']]

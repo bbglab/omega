@@ -26,7 +26,6 @@ def prepare_data(input_fn):
     mut_counts = pd.read_csv(d['observed_mutations_file'], sep='\t')
     mutability = pd.read_csv(d['mutability_file'], sep='\t')
     depths = pd.read_csv(d['depths_file'], sep='\t')
-    regions = pd.read_csv(d['bed_regions_file'], sep='\t')
     vep = pd.read_csv(d['vep_annotation_file'], sep='\t')
 
     # group collects the grouping of samples, genes and impacts
@@ -37,7 +36,7 @@ def prepare_data(input_fn):
     group.add_group('genes', os.path.join(d['grouping_folder'], 'group_genes.json'))
     group.add_group('impacts', os.path.join(d['grouping_folder'], 'group_impacts.json'))
 
-    ground_control = Assembler(depths, regions, vep, mut_counts, mutability, group)
+    ground_control = Assembler(depths, vep, mut_counts, mutability, group)
     return list(ground_control.input_generator())
     
 

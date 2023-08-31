@@ -13,8 +13,9 @@ import tensorflow_probability as tfp
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
-from context_store import canonical_channels, transform_context
-from impact_store import GROUPING_DICT, most_deleterious
+from context_store import canonical_channels
+# from context_store import canonical_channels, transform_context
+# from impact_store import GROUPING_DICT, most_deleterious
 
 channels = canonical_channels()
 
@@ -38,7 +39,7 @@ class Grouping:
 
 class Assembler:
 
-    def __init__(self, depths, regions, vep, mut_counts, mutability, group):
+    def __init__(self, depths, vep, mut_counts, mutability, group):
 
         self.mut_counts = mut_counts
         self.mutability = mutability
@@ -49,34 +50,41 @@ class Assembler:
 
         # ** SETUP **
 
-        # ** step 1: annotate genes as "ELEMENTS" in depth table
-        # 1.1: create a mergable table from the regions BED file
-        feature_tuple = zip(regions['CHROMOSOME'], regions['START'], regions['END'], regions['ELEMENT'])
-        d = {'chr': [], 'pos':[], 'ELEMENT': []}
-        for chr_, start, end, elem in feature_tuple:
-            span = range(start+1, end+1)
-            l = len(span)
-            d['chr'] += [chr_] * l
-            d['pos'] += list(span)
-            d['ELEMENT'] += [elem] * l
-        mergable_regions_elements = pd.DataFrame(d)
-        # 1.2: merge with depths dataframe
-        depths_merge = depths.merge(mergable_regions_elements, on=['chr', 'pos'])
+        # ** step 1 : merge annotated sites with depths dataframe
+        depths.columns = ["CHROM", "POS"] + list(depths.columns[2:])
+        reduced_vep = vep[["CHROM", "POS", "CONTEXT_MUT", "GENE", "IMPACT"]]
+        depths_merge_context_impact = reduced_vep.merge(depths, on=["CHROM", "POS"], how = "left")
 
-        # ** step 2: 
-        # triplicate and annotate depths with impacts
-        # 2.1: create a mergable VEP table
-        vep_mergable = pd.DataFrame(columns=['chr', 'pos', 'CONTEXT_MUT', 'ELEMENT', 'IMPACT'])
-        vep_mergable['chr'], vep_mergable['pos'], vep_mergable['CONTEXT_MUT'], vep_mergable['ELEMENT'], vep_mergable['IMPACT'] = \
-            zip(*vep.apply(lambda r: r['#Uploaded_variation'].split('_') + [r['SYMBOL']] + [r['Consequence']], axis=1)) 
-        vep_mergable['chr'] = vep_mergable['chr'].astype(int)
-        vep_mergable['pos'] = vep_mergable['pos'].astype(int)
-        vep_mergable['CONTEXT_MUT'] = vep_mergable.apply(lambda r: transform_context(r['chr'], r['pos'], r['CONTEXT_MUT']), axis=1)
-        vep_mergable['IMPACT'] = vep_mergable['IMPACT'].apply(most_deleterious)
-        # 2.2: merge with depths
-        depths_merge_context_impact = pd.merge(depths_merge, vep_mergable, on=['chr', 'pos', 'ELEMENT'], how='left')
-        depths_merge_context_impact['IMPACT'] = depths_merge_context_impact['IMPACT'].apply(lambda x: GROUPING_DICT[x])
-        
+#         # ** step 1: annotate genes as "ELEMENTS" in depth table
+#         # 1.1: create a mergable table from the regions BED file
+#         feature_tuple = zip(regions['CHROMOSOME'], regions['START'], regions['END'], regions['ELEMENT'])
+#         d = {'chr': [], 'pos':[], 'ELEMENT': []}
+#         for chr_, start, end, elem in feature_tuple:
+#             span = range(start+1, end+1)
+#             l = len(span)
+#             d['chr'] += [chr_] * l
+#             d['pos'] += list(span)
+#             d['ELEMENT'] += [elem] * l
+#         mergable_regions_elements = pd.DataFrame(d)
+#         # 1.2: merge with depths dataframe
+#         depths_merge = depths.merge(mergable_regions_elements, on=['chr', 'pos'])
+
+#         # ** step 2: 
+#         # triplicate and annotate depths with impacts
+#         # 2.1: create a mergable VEP table
+#         vep_mergable = pd.DataFrame(columns=['chr', 'pos', 'CONTEXT_MUT', 'ELEMENT', 'IMPACT'])
+#         vep_mergable['chr'], vep_mergable['pos'], vep_mergable['CONTEXT_MUT'], vep_mergable['ELEMENT'], vep_mergable['IMPACT'] = \
+#             zip(*vep.apply(lambda r: r['#Uploaded_variation'].split('_') + [r['SYMBOL']] + [r['Consequence']], axis=1)) 
+#         vep_mergable['chr'] = vep_mergable['chr'].astype(int)
+#         vep_mergable['pos'] = vep_mergable['pos'].astype(int)
+#         vep_mergable['CONTEXT_MUT'] = vep_mergable.apply(lambda r: transform_context(r['chr'], r['pos'], r['CONTEXT_MUT']), axis=1)
+#         vep_mergable['IMPACT'] = vep_mergable['IMPACT'].apply(most_deleterious)
+#         vep_mergable['IMPACT'] = vep_mergable['IMPACT'].apply(lambda x: GROUPING_DICT[x])
+#         # 2.2: merge with depths
+#         depths_merge_context_impact = pd.merge(depths_merge, vep_mergable, on=['chr', 'pos', 'ELEMENT'], how='left')
+
+
+
         # ** step 3: create depths attribute
         self.depths = depths_merge_context_impact
 
@@ -91,7 +99,7 @@ class Assembler:
 
     def _get_region_contexts(self, gene):
 
-        df = self.depths[self.depths['ELEMENT'] == gene]
+        df = self.depths[self.depths['GENE'] == gene]
         return df['CONTEXT_MUT'].values
         
 
@@ -102,8 +110,8 @@ class Assembler:
 
         res = {}
         # for g in self.group.namespace('genes'):
-        for g in self.depths['ELEMENT'].unique():
-            df = self.depths[self.depths['ELEMENT'] == g]
+        for g in self.depths['GENE'].unique():
+            df = self.depths[self.depths['GENE'] == g]
             samples = [c for c in self.mutability.columns if c not in ['GENE', 'CONTEXT_MUT']]
             for s in samples:
                 depths = np.nan_to_num(df[s].values.astype(np.float32))
@@ -138,7 +146,7 @@ class Assembler:
         context_indicator_dict = {}
         genes = self.mutability['GENE'].unique()
         for g in genes:
-            df = self.depths[self.depths['ELEMENT'] == g]
+            df = self.depths[self.depths['GENE'] == g]
             for c in channels:
                 context_indicator = df['CONTEXT_MUT'].apply(lambda x: x == c).values
                 context_indicator_dict[(g, c)] = context_indicator.astype(np.float32)
@@ -149,7 +157,7 @@ class Assembler:
 
         res = {}
         for g in self.group.namespace('genes'):
-            df = self.depths[self.depths['ELEMENT'] == g]
+            df = self.depths[self.depths['GENE'] == g]
             for i in self.group.namespace('impacts'):
                 res[(g, i)] = df['IMPACT'].apply(lambda x: x == i).values.astype(np.float32)
         return res
