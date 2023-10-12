@@ -60,7 +60,10 @@ class Assembler:
             d['pos'] += list(span)
             d['ELEMENT'] += [elem] * l
         mergable_regions_elements = pd.DataFrame(d)
+        
         # 1.2: merge with depths dataframe
+        depths["chr"] = depths["chr"].astype(str).str.replace("chr","")
+        mergable_regions_elements["chr"] = mergable_regions_elements["chr"].astype(str).str.replace("chr","")
         depths_merge = depths.merge(mergable_regions_elements, on=['chr', 'pos'])
 
         # ** step 2: 
@@ -69,7 +72,7 @@ class Assembler:
         vep_mergable = pd.DataFrame(columns=['chr', 'pos', 'CONTEXT_MUT', 'ELEMENT', 'IMPACT'])
         vep_mergable['chr'], vep_mergable['pos'], vep_mergable['CONTEXT_MUT'], vep_mergable['ELEMENT'], vep_mergable['IMPACT'] = \
             zip(*vep.apply(lambda r: r['#Uploaded_variation'].split('_') + [r['SYMBOL']] + [r['Consequence']], axis=1)) 
-        vep_mergable['chr'] = vep_mergable['chr'].astype(int)
+        vep_mergable['chr'] = vep_mergable['chr'].astype(str).str.replace("chr","").astype(str)
         vep_mergable['pos'] = vep_mergable['pos'].astype(int)
         vep_mergable['CONTEXT_MUT'] = vep_mergable.apply(lambda r: transform_context(r['chr'], r['pos'], r['CONTEXT_MUT']), axis=1)
         vep_mergable['IMPACT'] = vep_mergable['IMPACT'].apply(most_deleterious)
@@ -116,7 +119,8 @@ class Assembler:
         res = {}
         rescaling_dict = self._depth_rescaling()
         samples = [c for c in self.mutability.columns if c not in ['GENE', 'CONTEXT_MUT']]
-        genes = self.mutability['GENE'].unique()
+        genes_from_rescaling = set([gen for samp, gen in rescaling_dict.keys()])
+        genes = [ gene for gene in self.mutability['GENE'].unique() if gene in genes_from_rescaling ]
         for g in genes:
             mutability_gene = self.mutability[self.mutability['GENE'] == g]
             region_contexts = self._get_region_contexts(g)

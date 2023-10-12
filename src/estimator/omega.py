@@ -131,7 +131,7 @@ class dNdS:
         
         # Lognormal-Poisson model
         model = tfd.JointDistributionSequential([
-            tfd.LogNormal(loc=0., scale=1.),     
+            tfd.LogNormal(loc=0., scale=0.25),     
             # dN/dS: https://en.wikipedia.org/wiki/Log-normal_distribution#/media/File:Log-normal-pdfs.png
             # TODO: we want a non-informative prior centered at ~1, how skewed towards >= 1?
             # n: mutation count
