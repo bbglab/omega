@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 import numpy as np
 
@@ -49,9 +50,11 @@ def vep2summarizedannotation(VEP_output_file, all_possible_sites_annotated_file)
 
 if __name__ == '__main__':
     # Input
-    VEP_output_file = f"./test/preprocessing/KidneyPanel.sites.VEP_annotated.tsv"
+    # VEP_output_file = f"./test/preprocessing/KidneyPanel.sites.VEP_annotated.tsv"
+    VEP_output_file = sys.argv[1]
 
     # Output
-    all_possible_sites_annotated_file = "./test/preprocessing/KidneyPanel.sites.bed_panel.annotation_summary.tsv"
+    # all_possible_sites_annotated_file = "./test/preprocessing/KidneyPanel.sites.bed_panel.annotation_summary.tsv"
+    all_possible_sites_annotated_file = sys.argv[2]
 
     vep2summarizedannotation(VEP_output_file, all_possible_sites_annotated_file)
