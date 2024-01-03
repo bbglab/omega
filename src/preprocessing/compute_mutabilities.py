@@ -290,7 +290,8 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                     depth_dataframe_file,
                                     mutations_file, 
                                     table_muts_x_sample_gene_impact_context,
-                                    mutability_table
+                                    mutability_table,
+                                    extra_parameters = {}
                                     ):
     """
     Wrapper for all the steps required to compute the mutabilities per sample, gene and context
@@ -324,11 +325,15 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
 
     # Compute mutational profile from the input data
-    mut_probability = compute_mutational_profile(annotated_minimal_maf,
-                                                    all_possible_sites_annotated,
-                                                    depth_dataframe,
-                                                    samples,
-                                                    pseudocount = 0.5)
+    if "mutational_profile" in extra_parameters.keys():
+        mut_probability = pd.read_csv(extra_parameters["mutational_profile"], sep = "\t", header = 0, index_col = 0)
+        mut_probability = mut_probability[samples].copy()
+    else:
+        mut_probability = compute_mutational_profile(annotated_minimal_maf,
+                                                        all_possible_sites_annotated,
+                                                        depth_dataframe,
+                                                        samples,
+                                                        pseudocount = 0.5)
 
 
     # Compute expected synonymous mutations
@@ -381,6 +386,7 @@ if __name__ == '__main__':
     depth_dataframe_file = "/workspace/datasets/prominent/data/kidney/depth/2023-06-30.kidney_panel.chr.633.tsv.gz"
     mutations_file = "/workspace/datasets/prominent/data/kidney/mutations/2023-06-30.kidney.633.maf.annot.tsv.gz"
     all_possible_sites_annotated_file = "./test/preprocessing/KidneyPanel.sites.bed_panel.annotation_summary.tsv"
+    additional_params = {}
 
     ## Output
     table_muts_x_sample_gene_impact_context = "./test/preprocessing/mutations_per_sample_gene_impact_context.count.tsv"
@@ -390,7 +396,8 @@ if __name__ == '__main__':
                                     depth_dataframe_file,
                                     mutations_file, 
                                     table_muts_x_sample_gene_impact_context,
-                                    mutabilities_table
+                                    mutabilities_table,
+                                    additional_params
                                     )
 
 

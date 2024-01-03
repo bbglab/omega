@@ -122,4 +122,6 @@ if postprocess_vep:
 # else check if vep_postprocessed_file exists
 
 if compute_mutabilities:
-    compute_mutabilities_wrapper(vep_postprocessed_file, depths_file, mutations_file, table_observed_muts, mutabilities_table)
+    additional_params_dict = input_data['additional_params']
+
+    compute_mutabilities_wrapper(vep_postprocessed_file, depths_file, mutations_file, table_observed_muts, mutabilities_table, additional_params_dict)
