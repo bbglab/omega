@@ -46,7 +46,9 @@ GROUPING_DICT = {
     'feature_elongation': 'non_genic_variant',
     'regulatory_region_variant': 'non_genic_variant',
     'feature_truncation': 'non_genic_variant',
-    'intergenic_variant': 'non_genic_variant'
+    'intergenic_variant': 'non_genic_variant',
+
+    'coding_sequence_variant' : 'coding_sequence_variant'
 
 }
 
@@ -95,7 +97,7 @@ CONSEQUENCES_LIST = [
 
 consequence_rank_dict = {consequence : rank for rank, consequence in enumerate(CONSEQUENCES_LIST)}
 rank_consequence_dict = {rank : consequence for rank, consequence in enumerate(CONSEQUENCES_LIST)}
-consequence_rank_dict
+
 
 def most_deleterious(impact_vep_string):
     all_consequences = impact_vep_string.split(",")

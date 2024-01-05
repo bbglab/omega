@@ -19,6 +19,8 @@ def canonical_channels():
 def transform_context(chr_, pos, mut):
     ref, alt = tuple(mut.split('/'))
     ref_triplet = hg38(chr_, pos-1, size=3)
+    if 'N' in ref_triplet:
+        return None
     if ref_triplet[1] not in ['C', 'T']:
         ref_triplet = ''.join(list(map(lambda x: cb[x], ref_triplet[::-1])))
         alt = cb[alt]

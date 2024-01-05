@@ -54,8 +54,24 @@ Make sure that the chromosome names are defined in the same way across the three
 
     wget "https://www.ensembl.org/Homo_sapiens/Download/Tools/VEP?format=txt;tl=....." -O regions_sites.VEP_annotated.tsv
 
-5. Provide the full path to this file back to the omega preprocessing execution that will be waiting for this.
 
+5. Ideally, you could provide the full path to this file back to the omega preprocessing execution that will be waiting for this. __BUT RIGHT NOW it is not possible: SEE BELOW__
+
+The user needs to do the following:
+TODO: Document this or add some subprocess commands to do it in bash
+this requires a bit more of preprocessing in bash:
+See here:
+```
+$ cd DIRECTORY_WITH_THE_FILE
+$ zcat Exome.no_header.tab.gz | cut -f 1,7,18 | awk '$3!="-"' | gzip > Exome.no_header.min_columns.tab.gz
+$ zcat Exome.no_header.min_columns.tab.gz | tail -n +2 | awk -F'\t' 'BEGIN {OFS = "\t"} {split($1, a, "[_/]"); print a[1], a[2], a[3], $2, $3}' | gzip > Exome.no_header.min_columns.processed.no_labels.tab.gz
+```
+This is just an example, but you should follow it in order to get a dataframe with the following format/order and without header:
+
+`
+all_possible_sites[['CHROM', 'POS', 'REF', 'ALT', '#Uploaded_variation',                                            'Consequence', 'SYMBOL', 'MUT']]`
+
+__THIS WILL BE CORRECTED SOON__
 
 =======
 ## Estimator
