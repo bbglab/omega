@@ -54,6 +54,9 @@ class Assembler:
         depths.columns = ["CHROM", "POS"] + list(depths.columns[2:])
         reduced_vep = vep[["CHROM", "POS", "CONTEXT_MUT", "GENE", "IMPACT"]]
         depths_merge_context_impact = reduced_vep.merge(depths, on=["CHROM", "POS"], how = "left")
+        print("depths annotated")
+        del depths
+        del reduced_vep
 
 #         # ** step 1: annotate genes as "ELEMENTS" in depth table
 #         # 1.1: create a mergable table from the regions BED file
@@ -84,17 +87,22 @@ class Assembler:
 #         depths_merge_context_impact = pd.merge(depths_merge, vep_mergable, on=['chr', 'pos', 'ELEMENT'], how='left')
 
 
-
         # ** step 3: create depths attribute
         self.depths = depths_merge_context_impact
+
+
+        self.genes = list(set(self.group.namespace('genes')) & set(self.depths['GENE'].unique()))
+        print("genes selected")
 
         # ** step 4: set up lookup table of lambdas
         # dict with key = sample, gene, impact
         self.lambdas = self._lambdas()
+        print("lambdas computed")
         
         # ** step 5: set up the lookup table of response counts
         # dict with key = sample, gene, impact
         self.response = self._response()
+        print("response computed")
 
 
     def _get_region_contexts(self, gene):
@@ -109,8 +117,8 @@ class Assembler:
         # used for mutability correction
 
         res = {}
-        # for g in self.group.namespace('genes'):
-        for g in self.depths['GENE'].unique():
+
+        for g in self.genes:
             df = self.depths[self.depths['GENE'] == g]
             samples = [c for c in self.mutability.columns if c not in ['GENE', 'CONTEXT_MUT']]
             for s in samples:
@@ -124,8 +132,8 @@ class Assembler:
         res = {}
         rescaling_dict = self._depth_rescaling()
         samples = [c for c in self.mutability.columns if c not in ['GENE', 'CONTEXT_MUT']]
-        genes = self.mutability['GENE'].unique()
-        for g in genes:
+        
+        for g in self.genes:
             mutability_gene = self.mutability[self.mutability['GENE'] == g]
             region_contexts = self._get_region_contexts(g)
             for s in samples:
@@ -144,8 +152,7 @@ class Assembler:
     def _context_indicators(self):
 
         context_indicator_dict = {}
-        genes = self.mutability['GENE'].unique()
-        for g in genes:
+        for g in self.genes:
             df = self.depths[self.depths['GENE'] == g]
             for c in channels:
                 context_indicator = df['CONTEXT_MUT'].apply(lambda x: x == c).values
@@ -156,7 +163,7 @@ class Assembler:
     def _impact_indicators(self):
 
         res = {}
-        for g in self.group.namespace('genes'):
+        for g in self.genes:
             df = self.depths[self.depths['GENE'] == g]
             for i in self.group.namespace('impacts'):
                 res[(g, i)] = df['IMPACT'].apply(lambda x: x == i).values.astype(np.float32)
@@ -170,7 +177,7 @@ class Assembler:
         context_indicator_dict = self._context_indicators()
         mutability_dict = self._mutability()
 
-        for g in self.group.namespace('genes'):
+        for g in self.genes:
             for s in self.group.namespace('samples'):
                 mutability = mutability_dict[(s, g)]
                 for i in self.group.namespace('impacts'):

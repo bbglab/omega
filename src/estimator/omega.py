@@ -64,7 +64,7 @@ def sampler(num_results, num_burnin_steps, log_prob_func):
     
     unconstraining_bijectors = [
         tfb.Exp()
-      ]
+    ]
 
     kernel = tfp.mcmc.TransformedTransitionKernel(
         inner_kernel=hmc, 
