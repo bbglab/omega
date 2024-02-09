@@ -4,13 +4,13 @@ import pandas as pd
 import numpy as np
 
 
-from utils import *
+from omega.src.preprocessing.utils import *
 
 # TODO
 # define the context and impact stores in a single place,
 # not two different files
-from context_store import transform_context
-from impact_store import GROUPING_DICT, consequence_rank_dict, most_deleterious
+from omega.src.preprocessing.context_store import transform_context
+from omega.src.preprocessing.impact_store import GROUPING_DICT, consequence_rank_dict, most_deleterious
 
 
 

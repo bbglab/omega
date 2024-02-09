@@ -2,13 +2,13 @@ import itertools
 import pandas as pd
 import numpy as np
 
-from utils import *
+from omega.src.preprocessing.utils import *
 
 def read_inputs(all_possible_sites_annotated_file, depth_dataframe_file, mutations_file):
     """
     This function reads the three files needed for running the preprocessing
     """
-
+    print(all_possible_sites_annotated_file, depth_dataframe_file, mutations_file)
     # Read all possible mutations annotated by VEP
     all_possible_sites_annotated = pd.read_csv(all_possible_sites_annotated_file,
                                                 sep = "\t", header = 0,
@@ -308,7 +308,7 @@ def compute_mutabilities(alpha_per_sample, mut_probability, samples):
         mutability_sample = mutability_sample.set_index(["GENE", "CONTEXT_MUT"])
         mutability_all_samples = pd.concat( (mutability_all_samples, mutability_sample), axis = 1)
 
-    return mutability_all_samples
+    return mutability_all_samples.reset_index()
 
 
 
