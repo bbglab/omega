@@ -56,19 +56,48 @@ class Assembler:
         del depths
         del reduced_vep
 
+#         # ** step 1: annotate genes as "ELEMENTS" in depth table
+#         # 1.1: create a mergable table from the regions BED file
+#         feature_tuple = zip(regions['CHROMOSOME'], regions['START'], regions['END'], regions['ELEMENT'])
+#         d = {'chr': [], 'pos':[], 'ELEMENT': []}
+#         for chr_, start, end, elem in feature_tuple:
+#             span = range(start+1, end+1)
+#             l = len(span)
+#             d['chr'] += [chr_] * l
+#             d['pos'] += list(span)
+#             d['ELEMENT'] += [elem] * l
+#         mergable_regions_elements = pd.DataFrame(d)
+#         # 1.2: merge with depths dataframe
+#         depths_merge = depths.merge(mergable_regions_elements, on=['chr', 'pos'])
 
-        # ** step 2: create depths attribute
+#         # ** step 2: 
+#         # triplicate and annotate depths with impacts
+#         # 2.1: create a mergable VEP table
+#         vep_mergable = pd.DataFrame(columns=['chr', 'pos', 'CONTEXT_MUT', 'ELEMENT', 'IMPACT'])
+#         vep_mergable['chr'], vep_mergable['pos'], vep_mergable['CONTEXT_MUT'], vep_mergable['ELEMENT'], vep_mergable['IMPACT'] = \
+#             zip(*vep.apply(lambda r: r['#Uploaded_variation'].split('_') + [r['SYMBOL']] + [r['Consequence']], axis=1)) 
+#         vep_mergable['chr'] = vep_mergable['chr'].astype(int)
+#         vep_mergable['pos'] = vep_mergable['pos'].astype(int)
+#         vep_mergable['CONTEXT_MUT'] = vep_mergable.apply(lambda r: transform_context(r['chr'], r['pos'], r['CONTEXT_MUT']), axis=1)
+#         vep_mergable['IMPACT'] = vep_mergable['IMPACT'].apply(most_deleterious)
+#         vep_mergable['IMPACT'] = vep_mergable['IMPACT'].apply(lambda x: GROUPING_DICT[x])
+#         # 2.2: merge with depths
+#         depths_merge_context_impact = pd.merge(depths_merge, vep_mergable, on=['chr', 'pos', 'ELEMENT'], how='left')
+
+
+        # ** step 3: create depths attribute
         self.depths = depths_merge_context_impact
+
 
         self.genes = list(set(self.group.namespace('genes')) & set(self.depths['GENE'].unique()))
         print("genes selected")
 
-        # ** step 3: set up lookup table of lambdas
+        # ** step 4: set up lookup table of lambdas
         # dict with key = sample, gene, impact
         self.lambdas = self._lambdas()
         print("lambdas computed")
         
-        # ** step 4: set up the lookup table of response counts
+        # ** step 5: set up the lookup table of response counts
         # dict with key = sample, gene, impact
         self.response = self._response()
         print("response computed")

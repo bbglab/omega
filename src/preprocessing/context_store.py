@@ -1,6 +1,6 @@
 from itertools import product
 
-from bgreference import hg38
+from bgreference import hg38, hg19, mm10
 
 
 cb = dict(zip('ACGT', 'TGCA'))
@@ -16,11 +16,9 @@ def canonical_channels():
     return sorted_contexts
 
 
-def transform_context(chr_, pos, mut):
+def transform_context(chr_, pos, mut, assembly = hg38):
     ref, alt = tuple(mut.split('/'))
-    ref_triplet = hg38(chr_, pos-1, size=3)
-    if 'N' in ref_triplet:
-        return None
+    ref_triplet = assembly(chr_, pos-1, size=3)
     if ref_triplet[1] not in ['C', 'T']:
         ref_triplet = ''.join(list(map(lambda x: cb[x], ref_triplet[::-1])))
         alt = cb[alt]
