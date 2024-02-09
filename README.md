@@ -1,6 +1,17 @@
 # omega
 dN/dS analysis
 
+## Installing
+```
+conda create -n omega python=3.10.12
+conda activate omega
+conda install conda-forge::libcurl
+git clone https://github.com/bbglab/omega.git
+cd omega
+git checkout dev/package
+pip install .
+```
+
 
 ## Run preprocessing
 `$ python src/preprocessing/preprocessing.py test/input.json`
