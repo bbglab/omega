@@ -1,11 +1,9 @@
 import os
 import json
-import typer
 import tqdm
-from enum import Enum
+# from enum import Enum
 from multiprocessing import Pool
 
-import click
 
 import pandas as pd
 import numpy as np
@@ -16,8 +14,6 @@ from omega.src.estimator.omega import bayes_infer, mle_infer
 import warnings
 warnings.filterwarnings(module='tensorflow*', action='ignore')
 
-
-app = typer.Typer()
 
 
 def prepare_data(d):
@@ -61,32 +57,21 @@ def mle(input_json: str, output_fn: str, cores=4):
     df.to_csv(output_fn, sep='\t', index=False)
 
 
-class ModelType(str, Enum):
-    bayes = "bayes"
-    mle = "mle"
+# class ModelType(str, Enum):
+#     bayes = "bayes"
+#     mle = "mle"
 
 
-@app.command()
-def run(input_json: str, output_fn: str, option: ModelType=ModelType.bayes, cores=4):
-    with open(input_json, 'rt') as f:
-        d = json.load(f)
+# def run(input_json: str, output_fn: str, option: ModelType=ModelType.bayes, cores=4):
+#     with open(input_json, 'rt') as f:
+#         d = json.load(f)
 
-    if option == 'bayes':
-        bayes(d, output_fn, cores=cores)
-    if option == 'mle':
-        mle(d, output_fn, cores=cores)
-
+#     if option == 'bayes':
+#         bayes(d, output_fn, cores=cores)
+#     if option == 'mle':
+#         mle(d, output_fn, cores=cores)
 
 
-@click.command()
-@click.option('--observed-mutations-file', type=click.Path(exists=True), help='Path to observed mutations file')
-@click.option('--mutability-file', type=click.Path(exists=True), help='Path to mutability file')
-@click.option('--depths-file', type=click.Path(exists=True), help='Path to depths file')
-@click.option('--vep-annotation-file', type=click.Path(exists=True), help='Path to VEP annotation file')
-@click.option('--grouping-folder', type=click.Path(exists=True), help='Path to grouping folder')
-@click.option('--output-fn', type=str, help='Output filename')
-@click.option('--option', type=click.Choice(['bayes', 'mle']), default='bayes', help='Option type (default: bayes)')
-@click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
 def run_click(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn,
                     option,
                     cores):
@@ -111,6 +96,4 @@ if __name__ == "__main__":
     python src/estimator/main.py --option bayes --cores 2 test/input_estimation.json test/output_estimation_bayes.tsv
     python src/estimator/main.py --option mle --cores 2 test/input_estimation.json test/output_estimation_mle.tsv
     """
-    
-    # app()
     run_click()

@@ -1,24 +1,10 @@
 import os
-import click
+
 import sys
 from omega.src.preprocessing.sites_table_from_bed import generate_all_sites_4VEP
 from omega.src.preprocessing.postprocessing_annotation import vep2summarizedannotation
 from omega.src.preprocessing.compute_mutabilities import compute_mutabilities_wrapper
 
-@click.command()
-@click.option('--preprocessing-mode', type=click.Choice(['run_vep', 'postprocess_vep', 'compute_mutabilities']), help='Preprocessing mode')
-@click.option('--depths-file', type=click.Path(exists=True), help='Path to depths file')
-@click.option('--mutations-file', type=click.Path(exists=True), help='Path to mutations file')
-@click.option('--bed-regions-file', type=click.Path(exists=True), help='Path to BED regions file')
-@click.option('--vep-input-generated', type=click.Path(), help='Path to output file generated for VEP to annotate it')
-
-@click.option('--vep-output-file', type=click.Path(exists=True), help='Path to VEP output file')
-@click.option('--vep-postprocessed-file', type=click.Path(exists=True), help='Path to postprocessed VEP output file')
-
-@click.option('--input-vep-postprocessed-file', type=click.Path(exists=True), help='Path to postprocessed VEP file')
-
-@click.option('--table-observed-muts', type=click.Path(), help='Path to table of observed mutations file. We recommend: mutability_per_sample_gene_context.tsv')
-@click.option('--mutabilities-table', type=click.Path(), help='Path to mutabilities table file. We recommend: mutations_per_sample_gene_impact_context.count.tsv')
 def main(preprocessing_mode,
             bed_regions_file, vep_input_generated,
             vep_output_file, vep_postprocessed_file,
@@ -49,6 +35,7 @@ def main(preprocessing_mode,
     if run_vep:
         generate_all_sites_4VEP(bed_regions_file, vep_input_generated)
 
+    # TODO revise how to handle this case
     if not vep_output_file and not input_vep_postprocessed_file:
         click.echo("Use this file to run Ensembl VEP:")
         click.echo("./regions_sites.4VEP.tsv")
