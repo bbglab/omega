@@ -2,7 +2,7 @@ import sys
 from os import path
 from setuptools import setup, find_packages
 
-# from omega.src import __version__
+from omega import __version__
 
 DESCRIPTION = "Omega is a dNdS method to identify positive selection cancer drivers"
 
@@ -23,10 +23,9 @@ with open(path.join(directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name="omega",
-    python_requires='>=3.10.0',
-    # version=__version__,
+    python_requires='>=3.10.12',
+    version=__version__,
     packages=find_packages(),
-    # package_data={'oncodriveclustl': ['data/*.tsv']},
     author='BBGLab (Barcelona Biomedical Genomics Lab)',
     author_email='bbglab@irbbarcelona.org',
     description=DESCRIPTION,

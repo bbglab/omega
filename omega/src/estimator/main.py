@@ -1,12 +1,14 @@
 import os
-import json
 import tqdm
+import daiquiri
+
 # from enum import Enum
 from multiprocessing import Pool
 
-
 import pandas as pd
-import numpy as np
+
+
+from omega import __logger_name__, __version__
 
 from omega.src.estimator.assemble import Grouping, Assembler
 from omega.src.estimator.omega import bayes_infer, mle_infer
@@ -14,6 +16,7 @@ from omega.src.estimator.omega import bayes_infer, mle_infer
 import warnings
 warnings.filterwarnings(module='tensorflow*', action='ignore')
 
+logger = daiquiri.getLogger(__logger_name__ + '.estimator')
 
 
 def prepare_data(d):
@@ -36,9 +39,11 @@ def prepare_data(d):
     
 
 def bayes(input_json, output_fn, cores=4):
+    logger.info("Running in bayes mode")
 
     input_grid = prepare_data(input_json)
     res = {}
+    # TODO fix that it only works when using 4 cores
     with Pool(4) as p:
         for d in tqdm.tqdm(p.imap(bayes_infer, input_grid), total=len(input_grid)):
             res = {k: res.get(k, []) + d.get(k, []) for k in d}
@@ -47,9 +52,12 @@ def bayes(input_json, output_fn, cores=4):
 
 
 def mle(input_json: str, output_fn: str, cores=4):
+    logger.info("Running in mle mode")
 
     input_grid = prepare_data(input_json)
     res = {}
+    # TODO fix that it only works when using 4 cores
+    # with Pool(4) as p:
     for args in tqdm.tqdm(input_grid):
         d = mle_infer(args)
         res = {k: res.get(k, []) + d.get(k, []) for k in d}
