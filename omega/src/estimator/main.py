@@ -1,22 +1,21 @@
 import os
 import tqdm
 import daiquiri
+import warnings
+
+import pandas as pd
 
 # from enum import Enum
 from multiprocessing import Pool
 
-import pandas as pd
-
 
 from omega import __logger_name__, __version__
-
 from omega.src.estimator.assemble import Grouping, Assembler
 from omega.src.estimator.omega import bayes_infer, mle_infer
 
-import warnings
-warnings.filterwarnings(module='tensorflow*', action='ignore')
-
 logger = daiquiri.getLogger(__logger_name__ + '.estimator')
+
+warnings.filterwarnings(module='tensorflow*', action='ignore')
 
 
 def prepare_data(d):
@@ -42,6 +41,7 @@ def bayes(input_json, output_fn, cores=4):
     logger.info("Running in bayes mode")
 
     input_grid = prepare_data(input_json)
+    logger.info("Data prepared")
     res = {}
     # TODO fix that it only works when using 4 cores
     with Pool(4) as p:

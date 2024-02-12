@@ -2,9 +2,8 @@ import os
 import json
 import functools
 import operator
-
+import daiquiri
 import numpy as np
-import pandas as pd
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
@@ -14,8 +13,12 @@ tfd = tfp.distributions
 tfb = tfp.bijectors
 
 from omega.src.estimator.context_store import canonical_channels
-
 channels = canonical_channels()
+
+
+from omega import __logger_name__, __version__
+logger = daiquiri.getLogger(__logger_name__ + '.estimator.assemble')
+
 
 
 class Grouping:
@@ -50,9 +53,11 @@ class Assembler:
 
         # ** step 1 : merge annotated sites with depths dataframe
         depths.columns = ["CHROM", "POS"] + list(depths.columns[2:])
+        if "CONTEXT" in depths.columns: depths = depths.drop("CONTEXT", axis = 1)
+
         reduced_vep = vep[["CHROM", "POS", "CONTEXT_MUT", "GENE", "IMPACT"]]
         depths_merge_context_impact = reduced_vep.merge(depths, on=["CHROM", "POS"], how = "left")
-        print("depths annotated")
+        logger.debug("depths annotated")
         del depths
         del reduced_vep
 
@@ -61,17 +66,23 @@ class Assembler:
         self.depths = depths_merge_context_impact
 
         self.genes = list(set(self.group.namespace('genes')) & set(self.depths['GENE'].unique()))
-        print("genes selected")
+
+        logger.debug("Samples")
+        logger.debug(self.group.namespace('samples'))
+        logger.debug("Genes")
+        logger.debug(self.genes)
+        logger.debug("Impacts")
+        logger.debug(self.group.namespace('impacts'))
 
         # ** step 3: set up lookup table of lambdas
         # dict with key = sample, gene, impact
         self.lambdas = self._lambdas()
-        print("lambdas computed")
+        logger.debug("lambdas computed")
         
         # ** step 4: set up the lookup table of response counts
         # dict with key = sample, gene, impact
         self.response = self._response()
-        print("response computed")
+        logger.debug("response computed")
 
 
     def _get_region_contexts(self, gene):
@@ -145,7 +156,6 @@ class Assembler:
         impact_indicator_dict = self._impact_indicators()
         context_indicator_dict = self._context_indicators()
         mutability_dict = self._mutability()
-
         for g in self.genes:
             for s in self.group.namespace('samples'):
                 mutability = mutability_dict[(s, g)]
@@ -175,21 +185,29 @@ class Assembler:
 
     def input_data(self, sample_set, gene_set, impact_set):
 
-        counts_tensors = [tf.convert_to_tensor(v, dtype=tf.float32) 
-                         for (s, g, i), v in self.response.items() if (s in sample_set) and (g in gene_set) and (i in impact_set)]
-        n = functools.reduce(tf.math.add, counts_tensors)
+        try:
+            counts_tensors = [tf.convert_to_tensor(v, dtype=tf.float32) 
+                            for (s, g, i), v in self.response.items() if (s in sample_set) and (g in gene_set) and (i in impact_set)]
+            n = functools.reduce(tf.math.add, counts_tensors)
 
-        lambda_tensors = [tf.convert_to_tensor(v, dtype=tf.float32) 
-                         for (s, g, i), v in self.lambdas.items() if (s in sample_set) and (g in gene_set) and (i in impact_set)]
-        l = functools.reduce(tf.math.add, lambda_tensors)
+        except:
+            n = [0.] * 96
+
+        try:
+            lambda_tensors = [tf.convert_to_tensor(v, dtype=tf.float32) 
+                            for (s, g, i), v in self.lambdas.items() if (s in sample_set) and (g in gene_set) and (i in impact_set)]
+            l = functools.reduce(tf.math.add, lambda_tensors)
+        except:
+            l = [0.] * 96
 
         return l, n
 
 
     def input_generator(self):
-
         for gene_term, gene_set in self.group.group['genes'].items():
             for sample_term, sample_set in self.group.group['samples'].items():
                 for impact_term, impact_set in self.group.group['impacts'].items():
+                    # logger.debug("{}{}{}".format(sample_set, gene_set, impact_set))
                     l, n = self.input_data(sample_set, gene_set, impact_set)
+                    # logger.debug("{}{}{}{}{}".format(sample_set, gene_set, impact_set, l, n))
                     yield (gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n)
