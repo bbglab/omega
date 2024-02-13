@@ -15,7 +15,11 @@ def main(preprocessing_mode,
             vep_output_file, vep_postprocessed_file,
             input_vep_postprocessed_file,
             depths_file, mutations_file,
-            table_observed_muts, mutabilities_table):
+            table_observed_muts, mutabilities_table,
+            mutational_profile,
+            genome_assembly,
+            single_sample
+            ):
     
     run_vep = False
     postprocess_vep = False
@@ -23,15 +27,16 @@ def main(preprocessing_mode,
     # Adjust based on preprocessing mode
     if preprocessing_mode == 'run_vep':
         run_vep = True
-        required_inputs = [bed_regions_file, vep_input_generated]
+        required_inputs = [bed_regions_file, vep_input_generated, genome_assembly]
 
     elif preprocessing_mode == 'postprocess_vep':
         postprocess_vep = True
-        required_inputs = [vep_output_file, vep_postprocessed_file]
+        required_inputs = [vep_output_file, vep_postprocessed_file, genome_assembly]
 
     elif preprocessing_mode == 'compute_mutabilities':
         compute_mutabilities = True
         required_inputs = [depths_file, mutations_file, input_vep_postprocessed_file]
+        required_inputs = required_inputs + [mutational_profile] if mutational_profile is not None else required_inputs
 
     if not all(required_inputs):
         logger.info("One or more input files do not exist. Please check the paths.")
@@ -52,7 +57,9 @@ def main(preprocessing_mode,
         vep2summarizedannotation(vep_output_file, vep_postprocessed_file)
 
     if compute_mutabilities:
-        compute_mutabilities_wrapper(input_vep_postprocessed_file, depths_file, mutations_file, table_observed_muts, mutabilities_table )
+        compute_mutabilities_wrapper(input_vep_postprocessed_file, depths_file,
+                                        mutations_file, table_observed_muts, mutabilities_table,
+                                        mutational_profile, single_sample)
 
 if __name__ == '__main__':
     main()

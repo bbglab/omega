@@ -7,6 +7,9 @@ from omega.src.preprocessing.utils import *
 from omega import __logger_name__, __version__
 logger = daiquiri.getLogger(__logger_name__ + '.preprocessing.comp_mutabs')
 
+from omega.src.preprocessing.context_store import canonical_channels
+
+contexts_formatted = canonical_channels()
 
 def read_inputs(all_possible_sites_annotated_file, depth_dataframe_file, mutations_file):
     """
@@ -147,11 +150,6 @@ def compute_mutational_profile(annotated_minimal_maf, all_possible_sites_annotat
         Output:
             Mutational profile per sample, possibility to add pseudocounts to prevent some probabilities from being 0
     """
-    subs = [''.join(z) for z in itertools.product('CT', 'ACGT') if z[0] != z[1]]
-    flanks = [''.join(z) for z in itertools.product('ACGT', repeat=2)]
-    contexts_unformatted = sorted([(a, b) for a, b in itertools.product(subs, flanks)], key=lambda x: (x[0], x[1]))
-    contexts_no_change = [b[0]+a[0]+b[1] for a, b in contexts_unformatted]
-    contexts_formatted = [b[0]+a[0]+b[1]+'>'+a[1] for a, b in contexts_unformatted]
 
     # create the matrix in the desired order
     empty_matrix = pd.DataFrame(index = contexts_formatted)
@@ -220,7 +218,7 @@ def compute_mutational_profile(annotated_minimal_maf, all_possible_sites_annotat
 
 
 
-def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_dataframe, mut_probability, samples):
+def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_dataframe, mut_probability, samples, single_sample = False):
     """
     Required information:
             All possible sites in the panel regions
@@ -239,8 +237,18 @@ def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_da
     all_possible_sites_per_sample = all_possible_sites_annotated.merge(binary_depth_dataframe, on = ["CHROM", "POS"], how = "left")
 
     # wide format
-    sites_per_gene_impact_context_sample_wide = all_possible_sites_per_sample.groupby(
-                                                                by = ["GENE", "IMPACT", "CONTEXT_MUT"])[samples].sum().reset_index()
+    if single_sample:
+        logger.debug("Running in single sample mode.")
+        logger.debug(all_possible_sites_per_sample.columns)
+        samples_names = [x for x in all_possible_sites_per_sample.columns if x not in ["CHROM", "POS", "REF", "ALT", "GENE", "IMPACT", "CONTEXT_MUT"] ]
+        logger.debug(samples_names)
+        sites_per_gene_impact_context_sample_wide = all_possible_sites_per_sample.groupby(
+                                                                    by = ["GENE", "IMPACT", "CONTEXT_MUT"])[samples_names].sum().sum(axis=1).reset_index()
+        sites_per_gene_impact_context_sample_wide.columns = ["GENE", "IMPACT", "CONTEXT_MUT", single_sample]
+
+    else:
+        sites_per_gene_impact_context_sample_wide = all_possible_sites_per_sample.groupby(
+                                                                    by = ["GENE", "IMPACT", "CONTEXT_MUT"])[samples].sum().reset_index()
 
 
     ## Get synonymous sites counts per gene, impact, context and sample
@@ -316,7 +324,9 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                     depth_dataframe_file,
                                     mutations_file, 
                                     table_muts_x_sample_gene_impact_context,
-                                    mutability_table
+                                    mutability_table,
+                                    mut_profile = None,
+                                    single_sample = None
                                     ):
     """
     Wrapper for all the steps required to compute the mutabilities per sample, gene and context
@@ -333,17 +343,42 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     logger.debug("Mutations annotated")
 
     # Define for which samples we have enough data
-    samples = define_samples(depth_dataframe, annotated_minimal_maf)
-    logger.debug("Samples selected")
-    
-    # focus the mutations and depth dataframes into the selected samples
-    annotated_minimal_maf = annotated_minimal_maf[annotated_minimal_maf["SAMPLE_ID"].isin(samples)].copy().reset_index(drop = True)
+    if single_sample:
+        samples = [single_sample]
+        logger.info("Running in single sample mode with {}".format(single_sample))
+        logger.warning("Be careful that there is no subselection of mutations when running in single sample mode.")
+
+    else:
+        samples = define_samples(depth_dataframe, annotated_minimal_maf)
+        logger.info("Samples selected")
+
+        # focus the mutations and depth dataframes into the selected samples
+        annotated_minimal_maf = annotated_minimal_maf[annotated_minimal_maf["SAMPLE_ID"].isin(samples)].copy().reset_index(drop = True)
+        logger.debug("Mutations subsetted")
+
     depth_dataframe = depth_dataframe[["CHROM", "POS"] + samples].copy()
-    logger.debug("Datasets subsetted")
+    logger.debug("Depths subsetted")
+
 
     # compute table of observed mutations
     obs_muts_per_gene_impact_context_sample_wide = compute_mutations_per_sample_gene_impact_context_table(annotated_minimal_maf)
     logger.debug("Mutations table produced")
+
+    if single_sample:
+        obs_muts_per_gene_impact_context_sample_wide_indexed = obs_muts_per_gene_impact_context_sample_wide.set_index(["GENE", "IMPACT", "CONTEXT_MUT"])
+        obs_muts_per_gene_impact_context_sample_wide = obs_muts_per_gene_impact_context_sample_wide_indexed.sum(axis = 1).reset_index()
+        obs_muts_per_gene_impact_context_sample_wide.columns = ["GENE", "IMPACT", "CONTEXT_MUT"] + samples
+        logger.debug("Mutations table compressed for single sample")
+
+    ## TODO
+    ## We could try to do something similar with the depths
+    # if single_sample:
+    #     depth_dataframe
+    #     obs_muts_per_gene_impact_context_sample_wide = obs_muts_per_gene_impact_context_sample_wide_indexed.sum(axis = 1).reset_index()
+    #     obs_muts_per_gene_impact_context_sample_wide.columns = ["GENE", "IMPACT", "CONTEXT_MUT"] + samples
+    #     logger.debug("Mutations table compressed for single sample")
+
+
 
     # *** OUTPUT 1 ***
     ## Store table with observed mutations 
@@ -354,12 +389,37 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
 
     # Compute mutational profile from the input data
-    mut_probability = compute_mutational_profile(annotated_minimal_maf,
-                                                    all_possible_sites_annotated,
-                                                    depth_dataframe,
-                                                    samples,
-                                                    pseudocount = 0.5)
-    logger.debug("Mutational profile computed")
+    if mut_profile:
+        ## TODO we could maybe move this to another function
+        # that processes the mutational profile provided by a user
+        mut_probability = pd.read_csv(mut_profile, sep = "\t", header = 0, index_col = 0)
+        mut_probability.columns = [ x.split(".")[0] for x in mut_probability.columns ]
+        mut_probability = mut_probability[samples].copy()
+
+        empty_matrix = pd.DataFrame(index = contexts_formatted)
+        mut_probability = pd.concat( (empty_matrix, mut_probability) , axis = 1)
+        mut_probability = mut_probability.fillna(0)
+        
+        # if there is any null value, add a pseudocount
+        if (mut_probability == 0).any().any():
+            # Add 0.5 to all values
+            logger.info("Adding a pseudocount of {}".format(min(mut_probability)))
+            mut_probability += min(mut_probability)
+
+        mut_probability = mut_probability / mut_probability.sum()
+
+        mut_probability.index.name = "CONTEXT_MUT"
+        mut_probability = mut_probability.reset_index()
+
+        logger.info("Mutational profile loaded")
+
+    else:
+        mut_probability = compute_mutational_profile(annotated_minimal_maf,
+                                                        all_possible_sites_annotated,
+                                                        depth_dataframe,
+                                                        samples,
+                                                        pseudocount = 0.5)
+        logger.info("Mutational profile computed")
 
     # Compute expected synonymous mutations
     expected_syn_per_gene_per_sample = compute_expected_synonymous_mutations(all_possible_sites_annotated,
