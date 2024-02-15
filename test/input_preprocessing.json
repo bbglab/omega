@@ -1,7 +1,0 @@
-{
-    "vep_output_file"       : "./input/KidneyPanel.sites.VEP_annotated.tsv",
-    "depths_file"           : "./input/2023-06-30.kidney_panel.633.tsv.gz",
-    "mutations_file"        : "./input/2023-06-30.kidney.633.maf.annot.tsv.gz",
-    "mutabilities_table"    : "./mutability_per_sample_gene_context.tsv",
-    "table_observed_muts"   : "./mutations_per_sample_gene_impact_context.tsv"
-}

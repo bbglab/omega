@@ -1,7 +1,0 @@
-{
-    "observed_mutations_file": "./mutations_per_sample_gene_impact_context.tsv",
-    "mutability_file":         "./mutability_per_sample_gene_context.tsv",
-    "depths_file"       :      "./input/2023-06-30.kidney_panel.633.tsv.gz",
-    "vep_annotation_file":     "./regions_sites.annotation_summary.tsv",
-    "grouping_folder":         "./group/"
-}
