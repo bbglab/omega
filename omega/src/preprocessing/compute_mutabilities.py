@@ -15,7 +15,7 @@ def read_inputs(all_possible_sites_annotated_file, depth_dataframe_file, mutatio
     """
     This function reads the three files needed for running the preprocessing
     """
-    print(all_possible_sites_annotated_file, depth_dataframe_file, mutations_file)
+    # logger.debug("{} {} {}".format(all_possible_sites_annotated_file, depth_dataframe_file, mutations_file))
     # Read all possible mutations annotated by VEP
     all_possible_sites_annotated = pd.read_csv(all_possible_sites_annotated_file,
                                                 sep = "\t", header = 0,
@@ -42,6 +42,14 @@ def read_inputs(all_possible_sites_annotated_file, depth_dataframe_file, mutatio
                                                                         )
     logger.debug("MAF loaded")
 
+    if "EFFECTIVE_MUTS" in maf:
+        maf["EFFECTIVE_MUTS"] = maf["EFFECTIVE_MUTS"].astype(float)
+        logger.debug("Using EFFECTIVE_MUTS provided.")
+    else:
+        maf["EFFECTIVE_MUTS"] = 1.
+        logger.debug("Counting each mutation only once")
+    
+
     # make sure that all the files have the chr prefix in the files
     if not all_possible_sites_annotated["CHROM"].iloc[0].startswith("chr"):
         all_possible_sites_annotated["CHROM"] = "chr" + all_possible_sites_annotated["CHROM"]
@@ -64,7 +72,7 @@ def annotate_mutations_using_vep(maf, all_possible_sites_annotated):
         - The observed mutations annotated
     """
 
-    minimal_maf = maf[['CHROM', 'POS', 'REF', 'ALT', 'SAMPLE_ID']].copy()
+    minimal_maf = maf[['CHROM', 'POS', 'REF', 'ALT', 'SAMPLE_ID', 'EFFECTIVE_MUTS']].copy()
 
     # select only SNVs
     minimal_maf["TYPE"] = minimal_maf[['REF', 'ALT']].apply(vartype, axis = 1)
@@ -101,13 +109,13 @@ def compute_mutations_per_sample_gene_impact_context_table(annotated_minimal_maf
     annotated_minimal_maf = annotated_minimal_maf[annotated_minimal_maf["GENE"] != '-']
     annotated_minimal_maf = annotated_minimal_maf[~annotated_minimal_maf["IMPACT"].isin(impacts_to_exclude)].reset_index(drop = True)
 
-    obs_muts_per_gene_impact_context_sample_long = annotated_minimal_maf.groupby(by = ['SAMPLE_ID', "GENE", "IMPACT", "CONTEXT_MUT"])["MUT_ID"].count()
+    obs_muts_per_gene_impact_context_sample_long = annotated_minimal_maf.groupby(by = ['SAMPLE_ID', "GENE", "IMPACT", "CONTEXT_MUT"])["EFFECTIVE_MUTS"].sum()
     obs_muts_per_gene_impact_context_sample_long = obs_muts_per_gene_impact_context_sample_long.reset_index()
     obs_muts_per_gene_impact_context_sample_long.columns = ['SAMPLE_ID', "GENE", "IMPACT", "CONTEXT_MUT", "COUNT"]
     
     # wide format
     obs_muts_per_gene_impact_context_sample_wide = obs_muts_per_gene_impact_context_sample_long.pivot(
-                                                                index= ['GENE', "IMPACT", "CONTEXT_MUT"], columns='SAMPLE_ID', values='COUNT').fillna(0).astype(int).reset_index()
+                                                                index= ['GENE', "IMPACT", "CONTEXT_MUT"], columns='SAMPLE_ID', values='COUNT').fillna(0).astype(float).reset_index()
     obs_muts_per_gene_impact_context_sample_wide.columns.name = None
 
     return obs_muts_per_gene_impact_context_sample_wide
@@ -155,7 +163,7 @@ def compute_mutational_profile(annotated_minimal_maf, all_possible_sites_annotat
     empty_matrix = pd.DataFrame(index = contexts_formatted)
 
     # make sure to count each mutation only once (avoid annotation issues)
-    annotated_minimal_maf = annotated_minimal_maf[["SAMPLE_ID", "CONTEXT_MUT", "MUT_ID"]].drop_duplicates().reset_index(drop = True)
+    annotated_minimal_maf = annotated_minimal_maf[["SAMPLE_ID", "CONTEXT_MUT", "MUT_ID", "EFFECTIVE_MUTS"]].drop_duplicates().reset_index(drop = True)
     # TODO
     # maybe we should make sure that no mutation is counted
     # if it falls in a position outside the ones for which we have values of depth?
@@ -167,8 +175,8 @@ def compute_mutational_profile(annotated_minimal_maf, all_possible_sites_annotat
 
 
     # count the mutations per sample and per context
-    counts_x_sample_context_long = annotated_minimal_maf.groupby(by = ["SAMPLE_ID", "CONTEXT_MUT"])["MUT_ID"].count().reset_index()
-    counts_x_sample_matrix = counts_x_sample_context_long.pivot(index = "CONTEXT_MUT", columns = "SAMPLE_ID", values = "MUT_ID")
+    counts_x_sample_context_long = annotated_minimal_maf.groupby(by = ["SAMPLE_ID", "CONTEXT_MUT"])["EFFECTIVE_MUTS"].sum().reset_index()
+    counts_x_sample_matrix = counts_x_sample_context_long.pivot(index = "CONTEXT_MUT", columns = "SAMPLE_ID", values = "EFFECTIVE_MUTS")
     counts_x_sample_matrix = pd.concat( (empty_matrix, counts_x_sample_matrix) , axis = 1)
     counts_x_sample_matrix = counts_x_sample_matrix.fillna(0)
     counts_x_sample_matrix.index.name = "CONTEXT_MUT"
@@ -256,7 +264,7 @@ def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_da
                                                         sites_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
                                                     ].reset_index(drop = True)
 
-    syn_sites_per_gene_impact_context_sample[samples] = syn_sites_per_gene_impact_context_sample[samples].fillna(0).astype(int)
+    syn_sites_per_gene_impact_context_sample[samples] = syn_sites_per_gene_impact_context_sample[samples].fillna(0).astype(float)
 
     # the number of synonymous sites per gene should be the same for all samples
     # except if there are differences in sequencing coverage of those areas
