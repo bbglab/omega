@@ -1,5 +1,6 @@
 import os
 import itertools
+from functools import partial
 
 import numpy as np
 
@@ -49,6 +50,48 @@ def get_synthetic_data(l, true_omega, true_overdispersion):
     return neg_binom.sample()
 
 
+def dichotomous_search(point_estimate, func, bound, step=5, tol=1e-3):
+    
+    # step 1: looking for the upper limit
+    a = point_estimate
+    b = a + step
+    diff = bound - func(b)
+    while diff > 0:
+        a = b
+        b += step
+        diff = bound - func(b)
+    eps = abs(a - b)
+    
+    # step 2: refine upper limit with dichotomous search
+    while eps > tol:
+        middle = (a + b) / 2
+        if (bound - func(middle)) * (bound - func(b)) > 0:
+            b = middle
+        else:
+            a = middle
+        eps = abs(a - b)
+    
+    upper_limit = a
+
+    # step 3: set a lower limit
+    a = point_estimate
+    b = 0.01
+    eps = abs(a - b)
+    
+    # step 4: refine lower limit with dichotomous search
+    while eps > tol:
+        middle = (a + b) / 2
+        if (bound - func(middle)) * (bound - func(b)) > 0:
+            b = middle
+        else:
+            a = middle
+        eps = abs(a - b)
+    
+    lower_limit = a
+
+    return lower_limit, upper_limit
+
+    
 @tf.function(autograph=False, experimental_compile=True)
 def sampler(num_results, num_burnin_steps, log_prob_func):
     
@@ -110,13 +153,26 @@ class dNdS:
 
         # MLE optimization
         self.res = tfp.math.minimize(
-            loss_fn=lambda: -tf.reduce_sum(model.log_prob(self.n)) + alpha * omega,
-            num_steps=50,
+            # loss_fn=lambda: -tf.reduce_sum(model.log_prob(self.n)) + alpha * omega,
+            loss_fn=lambda: -tf.reduce_sum(model.log_prob(self.n)),
+            num_steps=100,
             optimizer=tf.optimizers.Adam(learning_rate=0.05), 
             trainable_variables=model.trainable_variables
         )
         # MLE omega estimate
         omega_hat = tf.convert_to_tensor(omega)
+
+        def log_like(w):
+            
+            f = 1 / dispersion
+            mu = w * self.l
+            p = mu / (mu + f)
+            model = tfd.NegativeBinomial(f, probs=p)
+            return tf.reduce_sum(model.log_prob(self.n))
+        
+        def twice_llr(w):
+
+            return 2 * (log_like(omega_hat) - log_like(w))
 
         # MLE log-likelihood
         l1 = -tf.reduce_sum(model.log_prob(self.n))
@@ -125,19 +181,28 @@ class dNdS:
         lambda_ = 2 * (l0 - l1)
         pvalue = tfd.Chi2(1.).survival_function(lambda_)
 
-        return omega_hat.numpy(), pvalue.numpy()
-    
+        # Confidence intervals
+
+        alpha = 0.05
+        chi2 = tfp.distributions.Chi2(1)
+        llr_boundary = chi2.quantile(1-alpha).numpy()
+        lower, upper = dichotomous_search(omega_hat, twice_llr, llr_boundary)
+        
+        return omega_hat.numpy(), lower.numpy(), upper.numpy(), pvalue.numpy()
+
+
     def bayes_run(self, debug=False):
         
         # Lognormal-Poisson model
         model = tfd.JointDistributionSequential([
-            tfd.LogNormal(loc=0., scale=1.),     
-            # dN/dS: https://en.wikipedia.org/wiki/Log-normal_distribution#/media/File:Log-normal-pdfs.png
+            # dN/dS prior: https://en.wikipedia.org/wiki/Log-normal_distribution#/media/File:Log-normal-pdfs.png
             # TODO: we want a non-informative prior centered at ~1, how skewed towards >= 1?
             # n: mutation count
-            lambda dnds: tfd.Poisson(self.l * dnds),  
+            # tfd.LogNormal(loc=0., scale=1.),
+            tfd.LogNormal(loc=0., scale=0.25),
+            lambda dnds: tfd.Poisson(self.l * dnds),
             ])
-        
+
         def log_prob_func(omega):
             return tf.reduce_mean(model.log_prob([omega, self.n]))
         
@@ -185,14 +250,13 @@ def mle_infer(args):
     res['sample'] = [sample_term]
     res['impact'] = [impact_term]
 
-    try:
-        omega_hat, pvalue = dnds_calculator.mle_run()
-        res['dnds'] = [omega_hat]
-        res['pvalue'] = [pvalue]
-    except:
-        res['dnds'] = [None]
-        res['pvalue'] = [None]
-        
+    omega_hat, lower, upper, pvalue = dnds_calculator.mle_run()
+    
+    res['dnds'] = [omega_hat]
+    res['pvalue'] = [pvalue]
+    res['lower'] = [lower]
+    res['upper'] = [upper]
+
     return res
 
 
