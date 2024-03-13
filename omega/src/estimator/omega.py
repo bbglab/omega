@@ -251,23 +251,23 @@ def mle_infer(args):
     res_learning_curve['sample'] = [sample_term]
     res_learning_curve['impact'] = [impact_term]
 
-    try:
-        omega_hat, lower, upper, pvalue, learning_curve = dnds_calculator.mle_run()
+    # try:
+    omega_hat, lower, upper, pvalue, learning_curve = dnds_calculator.mle_run()
 
-        res['dnds'] = [omega_hat]
-        res['pvalue'] = [pvalue]
-        res['lower'] = [lower]
-        res['upper'] = [upper]
+    res['dnds'] = [omega_hat]
+    res['pvalue'] = [pvalue]
+    res['lower'] = [lower]
+    res['upper'] = [upper]
 
-        res_learning_curve['learning_curve'] = [learning_curve]
+    res_learning_curve['learning_curve'] = [learning_curve]
 
-    except:
-        res['dnds'] = [None]
-        res['pvalue'] = [None]
-        res['lower'] = [None]
-        res['upper'] = [None]
+    # except:
+    #     res['dnds'] = [None]
+    #     res['pvalue'] = [None]
+    #     res['lower'] = [None]
+    #     res['upper'] = [None]
 
-        res_learning_curve['learning_curve'] = [[None]*1000]
+    #     res_learning_curve['learning_curve'] = [[None]*1000]
 
     return res, res_learning_curve
 
