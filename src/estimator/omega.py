@@ -140,25 +140,38 @@ class dNdS:
 
         # instantiate negative binomial model
         dispersion = 0.1
-        total_count = 1 / dispersion
+        f = 1 / dispersion
         mean = tfp.util.DeferredTensor(omega, lambda x: self.l * x, shape=(96,))
-        p = tfp.util.DeferredTensor(mean, lambda x: x / (x + total_count), shape=(96,))
-        model = tfd.NegativeBinomial(total_count, probs=p)
+        p = tfp.util.DeferredTensor(mean, lambda x: x / (x + f), shape=(96,))
+        model = tfd.NegativeBinomial(f, probs=p)
 
         # null log-likelihood
         l0 = -tf.reduce_sum(model.log_prob(self.n))
         
         # regularization parameter
-        alpha = 10  
+        # alpha = 10  
+
+        # learning rate schedule
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=1e-2,
+            decay_steps=1000,
+            decay_rate=0.9)
+
+        # convergence criterion
+
+        convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
+            rtol=0.1, window_size=1, min_num_steps=25)
 
         # MLE optimization
         self.res = tfp.math.minimize(
             # loss_fn=lambda: -tf.reduce_sum(model.log_prob(self.n)) + alpha * omega,
             loss_fn=lambda: -tf.reduce_sum(model.log_prob(self.n)),
-            num_steps=100,
-            optimizer=tf.optimizers.Adam(learning_rate=0.05), 
+            num_steps=1000,
+            convergence_criterion=convergence_criterion,
+            optimizer=tf.optimizers.Adam(learning_rate=lr_schedule),
             trainable_variables=model.trainable_variables
         )
+
         # MLE omega estimate
         omega_hat = tf.convert_to_tensor(omega)
 
@@ -188,7 +201,7 @@ class dNdS:
         llr_boundary = chi2.quantile(1-alpha).numpy()
         lower, upper = dichotomous_search(omega_hat, twice_llr, llr_boundary)
         
-        return omega_hat.numpy(), lower.numpy(), upper.numpy(), pvalue.numpy()
+        return omega_hat.numpy(), lower.numpy(), upper.numpy(), pvalue.numpy(), self.res.numpy()
 
 
     def bayes_run(self, debug=False):
