@@ -1,0 +1,6 @@
+cd ~/projects/omega/omega/test
+
+
+python ../src/preprocessing/main.py --preprocessing-mode compute_mutabilities --depths-file ./input/2023-06-30.kidney_panel.633.tsv.gz --mutations-file ./input/2023-06-30.kidney.633.maf.annot.tsv.gz --input-vep-postprocessed-file regions_sites.annotation_summary_kidney_panel.tsv --table-observed-muts mutations_per_sample_gene_impact_context.cli.tsv --mutabilities-table mutability_per_sample_gene_context.cli.tsv
+
+python ../src/estimator/main.py --observed-mutations-file ./mutations_per_sample_gene_impact_context.tsv --mutability-file ./mutability_per_sample_gene_context.tsv --depths-file ./input/2023-06-30.kidney_panel.633.tsv.gz --vep-annotation-file ./regions_sites.annotation_summary_kidney_panel.tsv --grouping-folder ./group/ --option bayes --output-fn estimmm
