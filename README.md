@@ -1,6 +1,7 @@
 # omega
 dN/dS analysis
 
+
 ## Installing
 ```
 conda create -n omega python=3.10.12
@@ -84,7 +85,7 @@ all_possible_sites[['CHROM', 'POS', 'REF', 'ALT', '#Uploaded_variation',        
 
 __THIS WILL BE CORRECTED SOON__
 
-=======
+
 ## Estimator
 
 ### How to run
@@ -145,5 +146,5 @@ but the columns specifying the estimates coming out of each method will differ:
 
 **mle**
 
-`dnds`, `pvalue`
+`dnds`, `lower_bound`, `upper_bound`, `pvalue`, `learning_curve`
 
