@@ -119,8 +119,11 @@ class Assembler:
             for s in samples:
                 mutability_sample_dict = dict(zip(mutability_gene['CONTEXT_MUT'].values, mutability_gene[s].values))
 
-                for c, value in mutability_sample_dict.items():
-                    mutability_sample_dict.update({c: max(value, 1e-4)})
+                # # This introduces misleading results, if no mutability for a given context, then no mutations can be randomized there.
+                # # omega preprocessing already adds some pseudocount due to the potential absence of mutations in specific trinucleotide contexts
+                # #     if a 0 reaches this step it is a real 0 either of depth or of expected number of mutations.
+                # for c, value in mutability_sample_dict.items():
+                #     mutability_sample_dict.update({c: max(value, 1e-4)})
     
                 mutability_sample = np.array(list(map(lambda x: mutability_sample_dict[x], region_contexts)))
                 fold_change = rescaling_dict[(s, g)]
@@ -190,14 +193,21 @@ class Assembler:
                             for (s, g, i), v in self.response.items() if (s in sample_set) and (g in gene_set) and (i in impact_set)]
             n = functools.reduce(tf.math.add, counts_tensors)
 
-        except:
-            n = [0.] * 96
+        except TypeError as e:
+            if "reduce() of empty iterable with no initial value" in str(e):
+                logger.warning(f"No mutations found for {sample_set}, {impact_set}, {gene_set}, filling the counts with 0s.")
+                n = [0.] * 96
+            else:
+                logger.error(f"Unknown error {e} for {sample_set}, {impact_set}, {gene_set}.")
+                raise
 
         try:
             lambda_tensors = [tf.convert_to_tensor(v, dtype=tf.float32) 
                             for (s, g, i), v in self.lambdas.items() if (s in sample_set) and (g in gene_set) and (i in impact_set)]
             l = functools.reduce(tf.math.add, lambda_tensors)
-        except:
+
+        except Exception as e:
+            logger.warning(f"Lambda tensors for {sample_set}, {impact_set}, {gene_set} found error in {e}")
             l = [0.] * 96
 
         return l, n
@@ -209,5 +219,9 @@ class Assembler:
                 for impact_term, impact_set in self.group.group['impacts'].items():
                     # logger.debug("{}{}{}".format(sample_set, gene_set, impact_set))
                     l, n = self.input_data(sample_set, gene_set, impact_set)
-                    # logger.debug("{}{}{}{}{}".format(sample_set, gene_set, impact_set, l, n))
+
+                    # either because of lambdas going to 0 or because of an error and then l put to 0, skip testing that group
+                    if np.all(l == 0.):
+                        logger.warning(f"Lambdas are 0, we are ignoring this case {sample_set}, {impact_set}, {gene_set}.")
+                        continue
                     yield (gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n)

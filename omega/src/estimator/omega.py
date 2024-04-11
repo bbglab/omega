@@ -140,9 +140,9 @@ class dNdS:
             decay_rate=0.9)
 
         # convergence criterion
-
         convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
             rtol=0.1, window_size=1, min_num_steps=25)
+
 
         # MLE optimization
         self.res = tfp.math.minimize(
@@ -158,20 +158,20 @@ class dNdS:
         omega_hat = tf.convert_to_tensor(omega)
 
         def log_like(w):
-            
+
             f = 1 / dispersion
             mu = w * self.l
             p = mu / (mu + f)
             model = tfd.NegativeBinomial(f, probs=p)
             return tf.reduce_sum(model.log_prob(self.n))
-        
+
         def twice_llr(w):
 
             return 2 * (log_like(omega_hat) - log_like(w))
 
         # MLE log-likelihood
         l1 = -tf.reduce_sum(model.log_prob(self.n))
-        
+
         # LRT
         lambda_ = 2 * (l0 - l1)
         pvalue = tfd.Chi2(1.).survival_function(lambda_)
@@ -204,10 +204,10 @@ class dNdS:
         num_results = 10000
         num_burnin_steps = 100000
         chain = sampler(num_results, num_burnin_steps, log_prob_func)
-        
+
         return chain
-        
-    
+
+
 def bayes_infer(args):
     
     gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n = args
@@ -226,7 +226,8 @@ def bayes_infer(args):
         res['perc_25_dnds'] = [np.percentile(chain, 25)]
         res['perc_75_dnds'] = [np.percentile(chain, 75)]
 
-    except:
+    except Exception as e:
+        logger.warning(f"Bayes method did not work because of {e}")
         res['mean_dnds'] = [None]
         res['perc_25_dnds'] = [None]
         res['perc_75_dnds'] = [None]
