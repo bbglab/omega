@@ -1,6 +1,6 @@
 from itertools import product
 
-from bgreference import hg38, hg19, mm10
+from bgreference import hg38, hg19, mm10, mm39
 
 
 cb = dict(zip('ACGT', 'TGCA'))

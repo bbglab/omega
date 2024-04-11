@@ -1,4 +1,4 @@
-bgreference==0.6
+bgreference==0.7
 bgdata==2.0.4
 click==8.1.7
 daiquiri==3.2.5.1
