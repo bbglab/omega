@@ -328,6 +328,34 @@ def compute_mutabilities(alpha_per_sample, mut_probability, samples):
 
 
 
+def adapt_mutational_profile(mut_profile_file, samples):
+    '''
+    When the user provides a custom mutational profile to be used in the process
+    this function processes it to make sure that:
+    - it has the proper format
+    - if there is any 0 we add the minimum value of the mutational profile as a pseudocount and renormalize
+    '''
+
+    mut_probability = pd.read_csv(mut_profile_file, sep = "\t", header = 0, index_col = 0)
+    mut_probability.columns = [ x.split(".")[0] for x in mut_probability.columns ]
+    mut_probability = mut_probability[samples].copy()
+
+    empty_matrix = pd.DataFrame(index = contexts_formatted)
+    mut_probability = pd.concat( (empty_matrix, mut_probability) , axis = 1)
+    mut_probability = mut_probability.fillna(0)
+    
+    # if there is any null value, add a pseudocount
+    if (mut_probability == 0).any().any():
+        # Add 0.5 to all values
+        logger.info("Adding a pseudocount of {}".format(min(mut_probability)))
+        mut_probability += min(mut_probability)
+
+    mut_probability = mut_probability / mut_probability.sum()
+
+    mut_probability.index.name = "CONTEXT_MUT"
+    return mut_probability.reset_index()
+
+
 def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                     depth_dataframe_file,
                                     mutations_file, 
@@ -398,27 +426,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
     # Compute mutational profile from the input data
     if mut_profile:
-        ## TODO we could maybe move this to another function
-        # that processes the mutational profile provided by a user
-        mut_probability = pd.read_csv(mut_profile, sep = "\t", header = 0, index_col = 0)
-        mut_probability.columns = [ x.split(".")[0] for x in mut_probability.columns ]
-        mut_probability = mut_probability[samples].copy()
-
-        empty_matrix = pd.DataFrame(index = contexts_formatted)
-        mut_probability = pd.concat( (empty_matrix, mut_probability) , axis = 1)
-        mut_probability = mut_probability.fillna(0)
-        
-        # if there is any null value, add a pseudocount
-        if (mut_probability == 0).any().any():
-            # Add 0.5 to all values
-            logger.info("Adding a pseudocount of {}".format(min(mut_probability)))
-            mut_probability += min(mut_probability)
-
-        mut_probability = mut_probability / mut_probability.sum()
-
-        mut_probability.index.name = "CONTEXT_MUT"
-        mut_probability = mut_probability.reset_index()
-
+        mut_probability = adapt_mutational_profile(mut_profile, samples)
         logger.info("Mutational profile loaded")
 
     else:
