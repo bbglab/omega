@@ -213,8 +213,9 @@ def bayes_infer(args):
     gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n = args
 
     res = {}
-    
+
     dnds_calculator = dNdS(l, n)
+
 
     res['gene'] = [gene_term]
     res['sample'] = [sample_term]
@@ -241,8 +242,9 @@ def mle_infer(args):
 
     res = {}
     res_learning_curve = {}
-    
+
     dnds_calculator = dNdS(l, n)
+    # logger.debug(f"dNdS calculator for {gene_term}\t{sample_term}\t{impact_term}\n{gene_set}\t{sample_set}\t{impact_set}\nhas n equal to {n} and l equal to {l}\nn, l pairs\n{list(zip(list(n), list(l)))}")
 
     res['gene'] = [gene_term]
     res['sample'] = [sample_term]

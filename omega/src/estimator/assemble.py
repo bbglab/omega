@@ -124,7 +124,7 @@ class Assembler:
                 # #     if a 0 reaches this step it is a real 0 either of depth or of expected number of mutations.
                 # for c, value in mutability_sample_dict.items():
                 #     mutability_sample_dict.update({c: max(value, 1e-4)})
-    
+
                 mutability_sample = np.array(list(map(lambda x: mutability_sample_dict[x], region_contexts)))
                 fold_change = rescaling_dict[(s, g)]
                 mutability_vector = mutability_sample * fold_change
@@ -201,6 +201,10 @@ class Assembler:
                 logger.error(f"Unknown error {e} for {sample_set}, {impact_set}, {gene_set}.")
                 raise
 
+        # Convert n to a tensor if it's not already one
+        if not isinstance(n, tf.Tensor):
+            n = tf.convert_to_tensor(n, dtype=tf.float32)
+
         try:
             lambda_tensors = [tf.convert_to_tensor(v, dtype=tf.float32) 
                             for (s, g, i), v in self.lambdas.items() if (s in sample_set) and (g in gene_set) and (i in impact_set)]
@@ -209,6 +213,10 @@ class Assembler:
         except Exception as e:
             logger.warning(f"Lambda tensors for {sample_set}, {impact_set}, {gene_set} found error in {e}")
             l = [0.] * 96
+
+        # Convert l to a tensor if it's not already one
+        if not isinstance(l, tf.Tensor):
+            l = tf.convert_to_tensor(l, dtype=tf.float32)
 
         return l, n
 
