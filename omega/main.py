@@ -45,6 +45,8 @@ def omega():
 @click.option('--mutational-profile', type=click.Path(), default = None, help='Path to table of mutational profile.')
 @click.option('--genome-assembly', type=click.Choice(['hg38', 'hg19', 'mm10']), default = 'hg38', help='Genome assembly')
 @click.option('--single-sample', type=click.STRING, default = None, help='Name of the single sample. It also serves for activating the single sample mode.')
+@click.option('--absent-synonymous', type=click.Choice(['ignore', 'infer_global_custom', 'infer_covariates']), default = 'ignore', help='Omega mode for genes without synonymous mutations.')
+@click.option('--relative-synonymous-muts-file', type=click.Path(), default = None, help='Path to table of synonymous mutations per gene.')
 @setup_logging_decorator
 def preprocessing(preprocessing_mode,
                     bed_regions_file, vep_input_generated,
@@ -54,7 +56,9 @@ def preprocessing(preprocessing_mode,
                     table_observed_muts, mutabilities_table,
                     mutational_profile,
                     genome_assembly,
-                    single_sample
+                    single_sample,
+                    absent_synonymous,
+                    relative_synonymous_muts_file
             ):
     """"Build datasets necessary to run Omega."""
     startup_message(__version__, "Initializing preprocessing...")
@@ -73,7 +77,9 @@ def preprocessing(preprocessing_mode,
     logger.info(f"mutational_profile: {mutational_profile}")
     logger.info(f"genome_assembly: {genome_assembly}")
     logger.info(f"single_sample: {single_sample}")
-    
+    logger.info(f"absent_synonymous: {absent_synonymous}")
+    logger.info(f"relative_synonymous_muts_file: {relative_synonymous_muts_file}")
+
     preprocessing_main(preprocessing_mode,
                         bed_regions_file, vep_input_generated,
                         vep_output_file, vep_postprocessed_file,
@@ -82,7 +88,9 @@ def preprocessing(preprocessing_mode,
                         table_observed_muts, mutabilities_table,
                         mutational_profile,
                         genome_assembly,
-                        single_sample)
+                        single_sample,
+                        absent_synonymous,
+                        relative_synonymous_muts_file)
 
 
 @omega.command(context_settings=dict(help_option_names=['-h', '--help']),

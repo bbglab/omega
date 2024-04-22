@@ -13,6 +13,72 @@ git checkout dev/package
 pip install .
 ```
 
+## Run preprocessing
+
+### Input
+
+### Modes
+#### Mutabilities generation modes
+The only difference when running omega in one mode or another is in generating the mutabilities file(`omega preprocessing`). For the downstream step (`omega estimator`) there is no difference.
+
+
+##### OmegaLoc
+`absent-synonymous` has value `ignore`
+
+```
+omega preprocessing --preprocessing-mode compute_mutabilities \
+                    --depths-file P19_0044_BDO_01.tsv.gz \
+                    --mutations-file P19_0044_BDO_01.mutations.tsv \
+                    --input-vep-postprocessed-file consensus.exons_splice_sites.tsv \
+                    --mutabilities-table mutability_per_sample_gene_context.P19_0044_BDO_01.tsv \
+                    --table-observed-muts mutations_per_sample_gene_impact_context.P19_0044_BDO_01.tsv \
+                    --mutational-profile P19_0044_BDO_01.all.profile.tsv \
+                    --single-sample P19_0044_BDO_01 \
+                    --absent-synonymous ignore
+```
+
+
+##### OmegaGlobalLoc
+`absent-synonymous` has value `infer_global_custom`
+
+```
+omega preprocessing --preprocessing-mode compute_mutabilities \
+                    --depths-file P19_0044_BDO_01.tsv.gz \
+                    --mutations-file P19_0044_BDO_01.mutations.tsv \
+                    --input-vep-postprocessed-file consensus.exons_splice_sites.tsv \
+                    --mutabilities-table mutability_per_sample_gene_context.P19_0044_BDO_01.gLoc.tsv \
+                    --table-observed-muts mutations_per_sample_gene_impact_context.P19_0044_BDO_01.gLoc.tsv \
+                    --mutational-profile P19_0044_BDO_01.all.profile.tsv \
+                    --single-sample P19_0044_BDO_01 \
+                    --absent-synonymous infer_global_custom \
+                    --relative-synonymous-muts-file ~/cohort_syn.tsv
+```
+
+where `~/cohort_syn.tsv` contains at least these two columns:
+```
+GENE	SYNONYMOUS_MUTS
+ARID1A	408.0
+CDKN1A	64.0
+CREBBP	506.0
+EP300	320.0
+FGFR3	67.0
+...
+```
+
+
+
+### Issues
+
+- When generating the omega estimator files with OmegaLoc, any gene without synonymous mutations will not have any output.
+- When running omega estimator, if any of the 96 channels of CONTEXT>MUT is 0, because there is no possible site of that kind that can generate a mutation of the impact that is being analyzed, those channels will be discarded see [#22](https://github.com/bbglab/omega/pull/22). (this is particularly frequent for nonsense and essential_splice impacts)
+
+
+
+# __TO BE UPDATED__
+
+
+
+
 
 ## Run preprocessing
 `$ python src/preprocessing/preprocessing.py test/input.json`

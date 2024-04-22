@@ -1,3 +1,4 @@
+import os
 import itertools
 import daiquiri
 import pandas as pd
@@ -362,7 +363,9 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                     table_muts_x_sample_gene_impact_context,
                                     mutability_table,
                                     mut_profile = None,
-                                    single_sample = None
+                                    single_sample = None,
+                                    absent_synonymous = 'ignore',
+                                    relative_synonymous_muts_file = None
                                     ):
     """
     Wrapper for all the steps required to compute the mutabilities per sample, gene and context
@@ -372,8 +375,13 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                                         depth_dataframe_file,
                                                                         mutations_file
                                                                         )
-    logger.debug("Inputs loaded")
 
+    if absent_synonymous == 'infer_global_custom':
+        # check if exists
+        if not os.path.isfile(relative_synonymous_muts_file):
+            logger.debug(f"Relative synonymous mutations file : {relative_synonymous_muts_file} does not exist")
+
+    logger.debug("Inputs loaded")
     # Annotate mutations
     annotated_minimal_maf = annotate_mutations_using_vep(maf, all_possible_sites_annotated)
     logger.debug("Mutations annotated")
@@ -444,13 +452,51 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                                                 samples)
     logger.debug("Expected synonymous computed")
 
+
+    if absent_synonymous == 'infer_global_custom':
+        relative_syn_muts_per_gene_allsamples = pd.read_csv(relative_synonymous_muts_file,
+                                                        sep = "\t", header = 0,
+                                                        dtype = {"GENE" : str, "SYNONYMOUS_MUTS": float}).set_index("GENE")
+
+        # Normalize the counts of mutations per gene to ensure that the values are relative and sum to 1
+        relative_syn_muts_per_gene_allsamples = relative_syn_muts_per_gene_allsamples / relative_syn_muts_per_gene_allsamples.sum()
+
+        # Count how many synonymous mutations are there in each sample irrespective of the gene
+        syn_muts_per_sample = obs_muts_per_gene_impact_context_sample_wide[
+                                                            obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
+                                                        ].reset_index(drop = True)[samples].sum()
+                                                        # Perform broadcasting multiplication
+        syn_muts_per_sample_df = pd.DataFrame(syn_muts_per_sample).T
+
+        # Multiply the two "vectors" to get a value of synonymous mutations per sample per gene
+        result_array = relative_syn_muts_per_gene_allsamples.values * syn_muts_per_sample_df.values
+
+        # put the right names to the rows and columns
+        obs_syn_muts_per_gene_sample = pd.DataFrame(result_array,
+                                                            columns= syn_muts_per_sample_df.columns,
+                                                            index=relative_syn_muts_per_gene_allsamples.index)
+        obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_sample.reset_index()
+        logger.debug("Synonynmous computed from the total number of observed synonymous and distributed according to the relative counts in the custom file provided.")
+        # print('CV', obs_syn_muts_per_gene_sample)
+
+    elif absent_synonymous == 'infer_covariates':
+        pass
+    
+    # else:
+    elif absent_synonymous == 'ignore':
     # Count of observed synonymous mutations per sample and gene
-    obs_syn_muts_per_gene_context_sample = obs_muts_per_gene_impact_context_sample_wide[
-                                                    obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"].reset_index(
-                                                        drop = True)
-    obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_context_sample.groupby(by = ["GENE"])[samples].sum()
-    obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_sample.reset_index()
-    logger.debug("Observed synonymous computed")
+        obs_syn_muts_per_gene_context_sample1 = obs_muts_per_gene_impact_context_sample_wide[
+                                                        obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"].reset_index(
+                                                            drop = True)
+        obs_syn_muts_per_gene_sample1 = obs_syn_muts_per_gene_context_sample1.groupby(by = ["GENE"])[samples].sum()
+        obs_syn_muts_per_gene_sample1 = obs_syn_muts_per_gene_sample1.reset_index()
+        # print('LOC', obs_syn_muts_per_gene_sample1)
+        logger.debug("Observed synonymous computed")
+
+    obs_muts_per_gene_context_sample = obs_muts_per_gene_impact_context_sample_wide.reset_index(drop = True)
+    obs_muts_per_gene_sample = obs_muts_per_gene_context_sample.groupby(by = ["GENE"])[samples].sum()
+    obs_muts_per_gene_sample = obs_muts_per_gene_sample.reset_index()
+
 
     #####
     # Alpha computation
@@ -461,10 +507,17 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     #####
 
     # we compute the value of alpha per each gene-sample pair,
-    # by dividing the number of expected synonymous
+    # by dividing the number of observed synonymous
     # by the number of synonymous we would be generating with the original mutational profile
     alpha_per_sample = obs_syn_muts_per_gene_sample.set_index("GENE").divide( expected_syn_per_gene_per_sample.set_index("GENE") )
     # print(alpha_per_sample)
+
+
+    # print("alpha per sample all mutations")
+    # print(obs_syn_muts_per_gene_sample.set_index("GENE"))
+    # print(obs_muts_per_gene_sample.set_index("GENE"))
+    # print(obs_muts_per_gene_sample.set_index("GENE").divide( expected_syn_per_gene_per_sample.set_index("GENE") ))
+
 
     # compute the mutabilities by adjusting the mutational profile (mut_probability)
     # by the value of alpha, to obtain an absolute mutability per context

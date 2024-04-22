@@ -18,7 +18,9 @@ def main(preprocessing_mode,
             table_observed_muts, mutabilities_table,
             mutational_profile,
             genome_assembly,
-            single_sample
+            single_sample,
+            absent_synonymous,
+            relative_synonymous_muts_file
             ):
     
     run_vep = False
@@ -59,7 +61,9 @@ def main(preprocessing_mode,
     if compute_mutabilities:
         compute_mutabilities_wrapper(input_vep_postprocessed_file, depths_file,
                                         mutations_file, table_observed_muts, mutabilities_table,
-                                        mutational_profile, single_sample)
+                                        mutational_profile, single_sample,
+                                        absent_synonymous, relative_synonymous_muts_file
+                                    )
 
 if __name__ == '__main__':
     main()
