@@ -485,11 +485,11 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     # else:
     elif absent_synonymous == 'ignore':
     # Count of observed synonymous mutations per sample and gene
-        obs_syn_muts_per_gene_context_sample1 = obs_muts_per_gene_impact_context_sample_wide[
+        obs_syn_muts_per_gene_context_sample = obs_muts_per_gene_impact_context_sample_wide[
                                                         obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"].reset_index(
                                                             drop = True)
-        obs_syn_muts_per_gene_sample1 = obs_syn_muts_per_gene_context_sample1.groupby(by = ["GENE"])[samples].sum()
-        obs_syn_muts_per_gene_sample1 = obs_syn_muts_per_gene_sample1.reset_index()
+        obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_context_sample.groupby(by = ["GENE"])[samples].sum()
+        obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_sample.reset_index()
         # print('LOC', obs_syn_muts_per_gene_sample1)
         logger.debug("Observed synonymous computed")
 
