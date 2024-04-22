@@ -110,10 +110,25 @@ def sampler(num_results, num_burnin_steps, log_prob_func):
 class dNdS:
 
     def __init__(self, l, n):
+
+        # # Get the indices of non-zero values in l
+        # non_zero_indices = np.nonzero(l.numpy())[0]
+
+        # # Subset both arrays using the non-zero indices
+        # l_non_zero = l[non_zero_indices]
+        # n_non_zero = n[non_zero_indices]
+
+        # Get the indices of non-zero values in l
+        non_zero_indices = tf.where(tf.not_equal(l, 0))
+
+        # Use tf.gather_nd to gather values from n using non-zero indices
+        l_non_zero = tf.gather_nd(l, non_zero_indices)
+        n_non_zero = tf.gather_nd(n, non_zero_indices)
         
-        self.l = l
-        self.n = n
+        self.l = l_non_zero
+        self.n = n_non_zero
         self.res = None
+        self.vector_size = len(non_zero_indices)
 
     def mle_run(self, debug=False):
         
@@ -123,8 +138,8 @@ class dNdS:
         # instantiate negative binomial model
         dispersion = 0.1
         f = 1 / dispersion
-        mean = tfp.util.DeferredTensor(omega, lambda x: self.l * x, shape=(96,))
-        p = tfp.util.DeferredTensor(mean, lambda x: x / (x + f), shape=(96,))
+        mean = tfp.util.DeferredTensor(omega, lambda x: self.l * x, shape=(self.vector_size,))
+        p = tfp.util.DeferredTensor(mean, lambda x: x / (x + f), shape=(self.vector_size,))
         model = tfd.NegativeBinomial(f, probs=p)
 
         # null log-likelihood
