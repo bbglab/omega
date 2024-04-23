@@ -16,6 +16,7 @@ def main(preprocessing_mode,
             input_vep_postprocessed_file,
             depths_file, mutations_file,
             table_observed_muts, mutabilities_table,
+            syn_muts_table,
             mutational_profile,
             genome_assembly,
             single_sample,
@@ -61,6 +62,7 @@ def main(preprocessing_mode,
     if compute_mutabilities:
         compute_mutabilities_wrapper(input_vep_postprocessed_file, depths_file,
                                         mutations_file, table_observed_muts, mutabilities_table,
+                                        syn_muts_table,
                                         mutational_profile, single_sample,
                                         absent_synonymous, relative_synonymous_muts_file
                                     )

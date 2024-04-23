@@ -362,6 +362,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                     mutations_file, 
                                     table_muts_x_sample_gene_impact_context,
                                     mutability_table,
+                                    syn_muts_table,
                                     mut_profile = None,
                                     single_sample = None,
                                     absent_synonymous = 'ignore',
@@ -432,6 +433,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                         sep = "\t")
 
 
+
     # Compute mutational profile from the input data
     if mut_profile:
         mut_probability = adapt_mutational_profile(mut_profile, samples)
@@ -465,7 +467,6 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         syn_muts_per_sample = obs_muts_per_gene_impact_context_sample_wide[
                                                             obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
                                                         ].reset_index(drop = True)[samples].sum()
-                                                        # Perform broadcasting multiplication
         syn_muts_per_sample_df = pd.DataFrame(syn_muts_per_sample).T
 
         # Multiply the two "vectors" to get a value of synonymous mutations per sample per gene
@@ -492,6 +493,16 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_sample.reset_index()
         # print('LOC', obs_syn_muts_per_gene_sample1)
         logger.debug("Observed synonymous computed")
+
+    if syn_muts_table:
+        syn_muts2store = obs_syn_muts_per_gene_sample.copy()
+        syn_muts2store = syn_muts2store.groupby(by = ["GENE"]).sum()[samples].sum(axis = 1).reset_index()
+        syn_muts2store.columns = ["GENE", "SYNONYMOUS_MUTS"]
+        syn_muts2store.to_csv(f"{syn_muts_table}",
+                                header = True,
+                                index = False,
+                                sep = "\t")
+        logger.debug(f"Synonymous mutations used stored into: {syn_muts_table}")
 
     obs_muts_per_gene_context_sample = obs_muts_per_gene_impact_context_sample_wide.reset_index(drop = True)
     obs_muts_per_gene_sample = obs_muts_per_gene_context_sample.groupby(by = ["GENE"])[samples].sum()

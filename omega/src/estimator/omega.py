@@ -111,13 +111,6 @@ class dNdS:
 
     def __init__(self, l, n):
 
-        # # Get the indices of non-zero values in l
-        # non_zero_indices = np.nonzero(l.numpy())[0]
-
-        # # Subset both arrays using the non-zero indices
-        # l_non_zero = l[non_zero_indices]
-        # n_non_zero = n[non_zero_indices]
-
         # Get the indices of non-zero values in l
         non_zero_indices = tf.where(tf.not_equal(l, 0))
 

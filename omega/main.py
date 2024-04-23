@@ -42,6 +42,7 @@ def omega():
 @click.option('--input-vep-postprocessed-file', type=click.Path(exists=True), help='Path to postprocessed VEP file')
 @click.option('--table-observed-muts', type=click.Path(), help='Path to table of observed mutations file. We recommend: mutability_per_sample_gene_context.tsv')
 @click.option('--mutabilities-table', type=click.Path(), help='Path to mutabilities table file. We recommend: mutations_per_sample_gene_impact_context.count.tsv')
+@click.option('--syn-muts-table', type=click.Path(), default = None, help='Path to table of observed synonymous mutations per gene file. We recommend: syn_muts_per_gene.tsv')
 @click.option('--mutational-profile', type=click.Path(), default = None, help='Path to table of mutational profile.')
 @click.option('--genome-assembly', type=click.Choice(['hg38', 'hg19', 'mm10']), default = 'hg38', help='Genome assembly')
 @click.option('--single-sample', type=click.STRING, default = None, help='Name of the single sample. It also serves for activating the single sample mode.')
@@ -54,6 +55,7 @@ def preprocessing(preprocessing_mode,
                     input_vep_postprocessed_file,
                     depths_file, mutations_file,
                     table_observed_muts, mutabilities_table,
+                    syn_muts_table,
                     mutational_profile,
                     genome_assembly,
                     single_sample,
@@ -74,6 +76,7 @@ def preprocessing(preprocessing_mode,
     logger.info(f"mutations_file: {mutations_file}")
     logger.info(f"table_observed_muts: {table_observed_muts}")
     logger.info(f"mutabilities_table: {mutabilities_table}")
+    logger.info(f"syn_muts_table: {syn_muts_table}")
     logger.info(f"mutational_profile: {mutational_profile}")
     logger.info(f"genome_assembly: {genome_assembly}")
     logger.info(f"single_sample: {single_sample}")
@@ -86,6 +89,7 @@ def preprocessing(preprocessing_mode,
                         input_vep_postprocessed_file,
                         depths_file, mutations_file,
                         table_observed_muts, mutabilities_table,
+                        syn_muts_table,
                         mutational_profile,
                         genome_assembly,
                         single_sample,
