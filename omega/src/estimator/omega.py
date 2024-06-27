@@ -257,6 +257,7 @@ def mle_infer(args):
     res['gene'] = [gene_term]
     res['sample'] = [sample_term]
     res['impact'] = [impact_term]
+    res['mutations'] = [int(sum(n).numpy())]
 
     res_learning_curve['gene'] = [gene_term]
     res_learning_curve['sample'] = [sample_term]
