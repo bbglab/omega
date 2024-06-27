@@ -228,6 +228,7 @@ def bayes_infer(args):
     res['gene'] = [gene_term]
     res['sample'] = [sample_term]
     res['impact'] = [impact_term]
+    res['mutations'] = [int(sum(n).numpy())]
 
     try:
         chain = dnds_calculator.bayes_run()
