@@ -55,7 +55,7 @@ def preprocessing(preprocessing_mode,
                     input_vep_postprocessed_file,
                     depths_file, mutations_file,
                     table_observed_muts, mutabilities_table,
-                    syn_muts_table,
+                    synonymous_muts_table,
                     mutational_profile,
                     genome_assembly,
                     single_sample,
@@ -76,7 +76,7 @@ def preprocessing(preprocessing_mode,
     logger.info(f"mutations_file: {mutations_file}")
     logger.info(f"table_observed_muts: {table_observed_muts}")
     logger.info(f"mutabilities_table: {mutabilities_table}")
-    logger.info(f"syn_muts_table: {syn_muts_table}")
+    logger.info(f"syn_muts_table: {synonymous_muts_table}")
     logger.info(f"mutational_profile: {mutational_profile}")
     logger.info(f"genome_assembly: {genome_assembly}")
     logger.info(f"single_sample: {single_sample}")
@@ -89,7 +89,7 @@ def preprocessing(preprocessing_mode,
                         input_vep_postprocessed_file,
                         depths_file, mutations_file,
                         table_observed_muts, mutabilities_table,
-                        syn_muts_table,
+                        synonymous_muts_table,
                         mutational_profile,
                         genome_assembly,
                         single_sample,
