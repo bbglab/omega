@@ -315,12 +315,12 @@ def compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, sa
         samples_names = [x for x in all_synonymous_sites_depth.columns if x not in ["CHROM", "POS", "REF", "ALT", "GENE", "IMPACT", "CONTEXT_MUT"] ]
         logger.debug(samples_names)
         depth_per_gene_sample_wide = all_synonymous_sites_depth.groupby(
-                                                                    by = ["GENE"])[samples_names].mean().mean(axis=1).reset_index()
+                                                                    by = ["GENE"])[samples_names].sum().sum(axis=1).reset_index()
         depth_per_gene_sample_wide.columns = ["GENE", single_sample]
 
     else:
         depth_per_gene_sample_wide = all_synonymous_sites_depth.groupby(
-                                                                    by = ["GENE"])[samples].mean().reset_index()
+                                                                    by = ["GENE"])[samples].sum().reset_index()
 
     depth_per_gene_sample_wide[samples] = depth_per_gene_sample_wide[samples].fillna(0).astype(float)
 
