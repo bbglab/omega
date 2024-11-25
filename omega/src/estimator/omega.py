@@ -134,10 +134,13 @@ class dNdS:
 
         # instantiate negative binomial model
         dispersion = self.dispersion
-        f = 1 / dispersion
         mean = tfp.util.DeferredTensor(omega, lambda x: self.l * x, shape=(self.vector_size,))
-        p = tfp.util.DeferredTensor(mean, lambda x: x / (x + f), shape=(self.vector_size,))
-        model = tfd.NegativeBinomial(f, probs=p)
+        if dispersion > 0:
+            f = 1 / dispersion
+            p = tfp.util.DeferredTensor(mean, lambda x: x / (x + f), shape=(self.vector_size,))
+            model = tfd.NegativeBinomial(f, probs=p)
+        elif dispersion == 0:
+            model = tfd.Poisson(mean)
 
         # null log-likelihood
         l0 = -tf.reduce_sum(model.log_prob(self.n))
@@ -170,15 +173,16 @@ class dNdS:
         omega_hat = tf.convert_to_tensor(omega)
 
         def log_like(w):
-
-            f = 1 / dispersion
             mu = w * self.l
-            p = mu / (mu + f)
-            model = tfd.NegativeBinomial(f, probs=p)
+            if dispersion > 0:
+                f = 1 / dispersion
+                p = mu / (mu + f)
+                model = tfd.NegativeBinomial(f, probs=p)
+            elif dispersion == 0:
+                model = tfd.Poisson(mu)
             return tf.reduce_sum(model.log_prob(self.n))
 
         def twice_llr(w):
-
             return 2 * (log_like(omega_hat) - log_like(w))
 
         # MLE log-likelihood
@@ -189,7 +193,6 @@ class dNdS:
         pvalue = tfd.Chi2(1.).survival_function(lambda_)
 
         # Confidence intervals
-
         alpha = 0.05
         chi2 = tfp.distributions.Chi2(1)
         llr_boundary = chi2.quantile(1-alpha).numpy()
