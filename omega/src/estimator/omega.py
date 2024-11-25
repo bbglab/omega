@@ -7,6 +7,8 @@ import tensorflow_probability as tfp
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
+from scipy.optimize import minimize
+
 from omega import __logger_name__, __version__
 logger = daiquiri.getLogger(__logger_name__ + '.estimator.omega')
 
@@ -129,50 +131,7 @@ class dNdS:
 
     def mle_run(self, debug=False):
         
-        # dN/dS parameter
-        omega = tfp.util.TransformedVariable(1., tfp.bijectors.Exp(), name='omega')
-
-        # instantiate negative binomial model
-        dispersion = self.dispersion
-        mean = tfp.util.DeferredTensor(omega, lambda x: self.l * x, shape=(self.vector_size,))
-        if dispersion > 0:
-            f = 1 / dispersion
-            p = tfp.util.DeferredTensor(mean, lambda x: x / (x + f), shape=(self.vector_size,))
-            model = tfd.NegativeBinomial(f, probs=p)
-        elif dispersion == 0:
-            model = tfd.Poisson(mean)
-
-        # null log-likelihood
-        l0 = -tf.reduce_sum(model.log_prob(self.n))
-        
-        # regularization parameter
-        # alpha = 10  
-
-        # learning rate schedule
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=1e-2,
-            decay_steps=1000,
-            decay_rate=0.9)
-
-        # convergence criterion
-        convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
-            rtol=0.1, window_size=1, min_num_steps=25)
-
-
-        # MLE optimization
-        self.res = tfp.math.minimize(
-            # loss_fn=lambda: -tf.reduce_sum(model.log_prob(self.n)) + alpha * omega,
-            loss_fn=lambda: -tf.reduce_sum(model.log_prob(self.n)),
-            num_steps=1000,
-            convergence_criterion=convergence_criterion,
-            optimizer=tf.optimizers.Adam(learning_rate=lr_schedule),
-            trainable_variables=model.trainable_variables
-        )
-
-        # MLE omega estimate
-        omega_hat = tf.convert_to_tensor(omega)
-
-        def log_like(w):
+        def minus_log_like(w):
             mu = w * self.l
             if dispersion > 0:
                 f = 1 / dispersion
@@ -180,14 +139,18 @@ class dNdS:
                 model = tfd.NegativeBinomial(f, probs=p)
             elif dispersion == 0:
                 model = tfd.Poisson(mu)
-            return tf.reduce_sum(model.log_prob(self.n))
+            return -tf.reduce_sum(model.log_prob(self.n))
+
+        res = minimize(minus_log_like, 1., method='nelder-mead', options={'xatol': 1e-8, 'disp': False})
+        omega_hat = res.x[0]
 
         def twice_llr(w):
-            return 2 * (log_like(omega_hat) - log_like(w))
+            return 2 * (minus_log_like(w) - minus_log_like(omega_hat))
 
         # MLE log-likelihood
-        l1 = -tf.reduce_sum(model.log_prob(self.n))
-
+        l1 = minus_log_like(omega_hat)
+        l0 = minus_log_like(1.)
+        
         # LRT
         lambda_ = 2 * (l0 - l1)
         pvalue = tfd.Chi2(1.).survival_function(lambda_)
@@ -198,7 +161,7 @@ class dNdS:
         llr_boundary = chi2.quantile(1-alpha).numpy()
         lower, upper = dichotomous_search(omega_hat, twice_llr, llr_boundary)
 
-        return omega_hat.numpy(), lower.numpy(), upper.numpy(), pvalue.numpy(), self.res.numpy()
+        return omega_hat, lower, upper, pvalue.numpy()
 
 
     def bayes_run(self, debug=False):
@@ -272,14 +235,15 @@ def mle_infer(args, dispersion):
     res_learning_curve['impact'] = [impact_term]
 
     # try:
-    omega_hat, lower, upper, pvalue, learning_curve = dnds_calculator.mle_run()
+    omega_hat, lower, upper, pvalue = dnds_calculator.mle_run()
 
     res['dnds'] = [omega_hat]
     res['pvalue'] = [pvalue]
     res['lower'] = [lower]
     res['upper'] = [upper]
 
-    res_learning_curve['learning_curve'] = [learning_curve]
+    # TODO: remove res_learning_curve
+    res_learning_curve['learning_curve'] = [None]
 
     # except:
     #     res['dnds'] = [None]
