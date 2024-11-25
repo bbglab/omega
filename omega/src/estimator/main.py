@@ -51,7 +51,7 @@ def bayes(input_json, output_fn, cores=4):
     df.to_csv(output_fn, sep='\t', index=False)
 
 
-def mle(input_json: str, output_fn: str, cores=4):
+def mle(input_json: str, output_fn: str, dispersion : float, cores=4):
     logger.info("Running in mle mode")
 
     input_grid = prepare_data(input_json)
@@ -65,7 +65,7 @@ def mle(input_json: str, output_fn: str, cores=4):
     #         res = {k: res.get(k, []) + d.get(k, []) for k in d}
     #         res_learning_curve = {k: res_learning_curve.get(k, []) + d_learning_curve.get(k, []) for k in d_learning_curve}
     for args in tqdm.tqdm(input_grid):
-        d, d_learning_curve = mle_infer(args)
+        d, d_learning_curve = mle_infer(args, dispersion)
         res = {k: res.get(k, []) + d.get(k, []) for k in d}
         res_learning_curve = {k: res_learning_curve.get(k, []) + d_learning_curve.get(k, []) for k in d_learning_curve}
 
@@ -96,6 +96,7 @@ def mle(input_json: str, output_fn: str, cores=4):
 
 
 def run_click(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn,
+                    dispersion_value, 
                     option,
                     cores):
     
@@ -109,7 +110,7 @@ def run_click(observed_mutations_file, mutability_file, depths_file, vep_annotat
     if option == 'bayes':
         bayes(d, output_fn, cores= int(cores))
     if option == 'mle':
-        mle(d, output_fn, cores= int(cores))
+        mle(d, output_fn, dispersion_value, cores= int(cores))
 
 
 

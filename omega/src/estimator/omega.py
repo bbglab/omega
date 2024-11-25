@@ -109,7 +109,7 @@ def sampler(num_results, num_burnin_steps, log_prob_func):
 
 class dNdS:
 
-    def __init__(self, l, n):
+    def __init__(self, l, n, dispersion):
 
         # Get the indices of non-zero values in l
         non_zero_indices = tf.where(tf.not_equal(l, 0))
@@ -120,6 +120,10 @@ class dNdS:
         
         self.l = l_non_zero
         self.n = n_non_zero
+
+        # only relevant for mle, in bayes defaults to 1 but is not used
+        self.dispersion = dispersion
+        
         self.res = None
         self.vector_size = len(non_zero_indices)
 
@@ -129,7 +133,7 @@ class dNdS:
         omega = tfp.util.TransformedVariable(1., tfp.bijectors.Exp(), name='omega')
 
         # instantiate negative binomial model
-        dispersion = 0.1
+        dispersion = self.dispersion
         f = 1 / dispersion
         mean = tfp.util.DeferredTensor(omega, lambda x: self.l * x, shape=(self.vector_size,))
         p = tfp.util.DeferredTensor(mean, lambda x: x / (x + f), shape=(self.vector_size,))
@@ -222,7 +226,7 @@ def bayes_infer(args):
 
     res = {}
 
-    dnds_calculator = dNdS(l, n)
+    dnds_calculator = dNdS(l, n, 1)
 
 
     res['gene'] = [gene_term]
@@ -245,14 +249,14 @@ def bayes_infer(args):
     return res
 
 
-def mle_infer(args):
+def mle_infer(args, dispersion):
 
     gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n = args
 
     res = {}
     res_learning_curve = {}
 
-    dnds_calculator = dNdS(l, n)
+    dnds_calculator = dNdS(l, n, dispersion)
     # logger.debug(f"dNdS calculator for {gene_term}\t{sample_term}\t{impact_term}\n{gene_set}\t{sample_set}\t{impact_set}\nhas n equal to {n} and l equal to {l}\nn, l pairs\n{list(zip(list(n), list(l)))}")
 
     res['gene'] = [gene_term]
