@@ -105,10 +105,11 @@ def preprocessing(preprocessing_mode,
 @click.option('--vep-annotation-file', type=click.Path(exists=True), help='Path to VEP annotation file')
 @click.option('--grouping-folder', type=click.Path(exists=True), help='Path to grouping folder')
 @click.option('--output-fn', type=str, help='Output filename')
+@click.option('--dispersion', type=float, default=0.1, help='Choose dispersion value(default: 0.1)')
 @click.option('--option', type=click.Choice(['bayes', 'mle']), default='bayes', help='Option type (default: bayes)')
 @click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
 @setup_logging_decorator
-def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, option, cores):
+def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, dispersion, option, cores):
     startup_message(__version__, "Running estimator...")
 
     logger.info("Received arguments:")
@@ -118,9 +119,10 @@ def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotat
     logger.info(f"vep_annotation_file: {vep_annotation_file}")
     logger.info(f"grouping_folder: {grouping_folder}")
     logger.info(f"output_fn: {output_fn}")
+    logger.info(f"dispersion: {dispersion}")
     logger.info(f"option: {option}")
     logger.info(f"cores: {cores}")
-    estimator_main(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, option, cores)
+    estimator_main(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, dispersion, option, cores)
 
 
 if __name__ == "__main__":

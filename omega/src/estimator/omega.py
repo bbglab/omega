@@ -7,6 +7,8 @@ import tensorflow_probability as tfp
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
+from scipy.optimize import minimize
+
 from omega import __logger_name__, __version__
 logger = daiquiri.getLogger(__logger_name__ + '.estimator.omega')
 
@@ -109,7 +111,7 @@ def sampler(num_results, num_burnin_steps, log_prob_func):
 
 class dNdS:
 
-    def __init__(self, l, n):
+    def __init__(self, l, n, dispersion):
 
         # Get the indices of non-zero values in l
         non_zero_indices = tf.where(tf.not_equal(l, 0))
@@ -120,78 +122,48 @@ class dNdS:
         
         self.l = l_non_zero
         self.n = n_non_zero
+
+        # only relevant for mle, in bayes defaults to 1 but is not used
+        self.dispersion = dispersion
+        
         self.res = None
         self.vector_size = len(non_zero_indices)
 
     def mle_run(self, debug=False):
         
-        # dN/dS parameter
-        omega = tfp.util.TransformedVariable(1., tfp.bijectors.Exp(), name='omega')
-
-        # instantiate negative binomial model
-        dispersion = 0.1
-        f = 1 / dispersion
-        mean = tfp.util.DeferredTensor(omega, lambda x: self.l * x, shape=(self.vector_size,))
-        p = tfp.util.DeferredTensor(mean, lambda x: x / (x + f), shape=(self.vector_size,))
-        model = tfd.NegativeBinomial(f, probs=p)
-
-        # null log-likelihood
-        l0 = -tf.reduce_sum(model.log_prob(self.n))
+        dispersion = self.dispersion
         
-        # regularization parameter
-        # alpha = 10  
-
-        # learning rate schedule
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=1e-2,
-            decay_steps=1000,
-            decay_rate=0.9)
-
-        # convergence criterion
-        convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
-            rtol=0.1, window_size=1, min_num_steps=25)
-
-
-        # MLE optimization
-        self.res = tfp.math.minimize(
-            # loss_fn=lambda: -tf.reduce_sum(model.log_prob(self.n)) + alpha * omega,
-            loss_fn=lambda: -tf.reduce_sum(model.log_prob(self.n)),
-            num_steps=1000,
-            convergence_criterion=convergence_criterion,
-            optimizer=tf.optimizers.Adam(learning_rate=lr_schedule),
-            trainable_variables=model.trainable_variables
-        )
-
-        # MLE omega estimate
-        omega_hat = tf.convert_to_tensor(omega)
-
-        def log_like(w):
-
-            f = 1 / dispersion
+        def minus_log_like(w):
             mu = w * self.l
-            p = mu / (mu + f)
-            model = tfd.NegativeBinomial(f, probs=p)
-            return tf.reduce_sum(model.log_prob(self.n))
+            if dispersion > 0:
+                f = 1 / dispersion
+                p = mu / (mu + f)
+                model = tfd.NegativeBinomial(f, probs=p)
+            elif dispersion == 0:
+                model = tfd.Poisson(mu)
+            return -tf.reduce_sum(model.log_prob(self.n))
+
+        res = minimize(minus_log_like, 1., method='nelder-mead', options={'xatol': 1e-8, 'disp': False})
+        omega_hat = res.x[0]
 
         def twice_llr(w):
-
-            return 2 * (log_like(omega_hat) - log_like(w))
+            return 2 * (minus_log_like(w) - minus_log_like(omega_hat))
 
         # MLE log-likelihood
-        l1 = -tf.reduce_sum(model.log_prob(self.n))
-
+        l1 = minus_log_like(omega_hat)
+        l0 = minus_log_like(1.)
+        
         # LRT
         lambda_ = 2 * (l0 - l1)
         pvalue = tfd.Chi2(1.).survival_function(lambda_)
 
         # Confidence intervals
-
         alpha = 0.05
         chi2 = tfp.distributions.Chi2(1)
         llr_boundary = chi2.quantile(1-alpha).numpy()
         lower, upper = dichotomous_search(omega_hat, twice_llr, llr_boundary)
 
-        return omega_hat.numpy(), lower.numpy(), upper.numpy(), pvalue.numpy(), self.res.numpy()
+        return omega_hat, lower, upper, pvalue.numpy()
 
 
     def bayes_run(self, debug=False):
@@ -222,7 +194,7 @@ def bayes_infer(args):
 
     res = {}
 
-    dnds_calculator = dNdS(l, n)
+    dnds_calculator = dNdS(l, n, 1)
 
 
     res['gene'] = [gene_term]
@@ -245,14 +217,14 @@ def bayes_infer(args):
     return res
 
 
-def mle_infer(args):
+def mle_infer(args, dispersion):
 
     gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n = args
 
     res = {}
     res_learning_curve = {}
 
-    dnds_calculator = dNdS(l, n)
+    dnds_calculator = dNdS(l, n, dispersion)
     # logger.debug(f"dNdS calculator for {gene_term}\t{sample_term}\t{impact_term}\n{gene_set}\t{sample_set}\t{impact_set}\nhas n equal to {n} and l equal to {l}\nn, l pairs\n{list(zip(list(n), list(l)))}")
 
     res['gene'] = [gene_term]
@@ -265,14 +237,15 @@ def mle_infer(args):
     res_learning_curve['impact'] = [impact_term]
 
     # try:
-    omega_hat, lower, upper, pvalue, learning_curve = dnds_calculator.mle_run()
+    omega_hat, lower, upper, pvalue = dnds_calculator.mle_run()
 
     res['dnds'] = [omega_hat]
     res['pvalue'] = [pvalue]
     res['lower'] = [lower]
     res['upper'] = [upper]
 
-    res_learning_curve['learning_curve'] = [learning_curve]
+    # TODO: remove res_learning_curve
+    res_learning_curve['learning_curve'] = [None]
 
     # except:
     #     res['dnds'] = [None]
