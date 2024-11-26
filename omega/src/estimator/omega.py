@@ -236,7 +236,6 @@ def mle_infer(args, dispersion):
     res_learning_curve['sample'] = [sample_term]
     res_learning_curve['impact'] = [impact_term]
 
-    # try:
     omega_hat, lower, upper, pvalue = dnds_calculator.mle_run()
 
     res['dnds'] = [omega_hat]
@@ -244,18 +243,7 @@ def mle_infer(args, dispersion):
     res['lower'] = [lower]
     res['upper'] = [upper]
 
-    # TODO: remove res_learning_curve
-    res_learning_curve['learning_curve'] = [None]
-
-    # except:
-    #     res['dnds'] = [None]
-    #     res['pvalue'] = [None]
-    #     res['lower'] = [None]
-    #     res['upper'] = [None]
-
-    #     res_learning_curve['learning_curve'] = [[None]*1000]
-
-    return res, res_learning_curve
+    return res
 
 
 if __name__ == '__main__':

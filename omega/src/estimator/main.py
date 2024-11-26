@@ -58,25 +58,17 @@ def mle(input_json: str, output_fn: str, dispersion : float, cores=4):
     logger.info("Data prepared")
 
     res = {}
-    res_learning_curve = {}
     # TODO fix that it only works when using 4 cores
     # with Pool(cores) as p:
     #     for d, d_learning_curve in tqdm.tqdm(p.imap(mle_infer, input_grid), total=len(input_grid)):
     #         res = {k: res.get(k, []) + d.get(k, []) for k in d}
     #         res_learning_curve = {k: res_learning_curve.get(k, []) + d_learning_curve.get(k, []) for k in d_learning_curve}
     for args in tqdm.tqdm(input_grid):
-        d, d_learning_curve = mle_infer(args, dispersion)
+        d = mle_infer(args, dispersion)
         res = {k: res.get(k, []) + d.get(k, []) for k in d}
-        res_learning_curve = {k: res_learning_curve.get(k, []) + d_learning_curve.get(k, []) for k in d_learning_curve}
 
     df = pd.DataFrame(res)
     df.to_csv(output_fn, sep='\t', index=False)
-
-    df_learning_curve_tmp = pd.DataFrame(res_learning_curve)
-    learning_curve_values = pd.DataFrame(df_learning_curve_tmp["learning_curve"].tolist())
-    learning_curve_values.columns = list(range(1,1001))
-    df_learning_curve = pd.concat((df_learning_curve_tmp[['gene','sample','impact']], learning_curve_values), axis = 1)
-    df_learning_curve.to_csv(f"{output_fn}.log", sep='\t', index=False)
 
 
 
