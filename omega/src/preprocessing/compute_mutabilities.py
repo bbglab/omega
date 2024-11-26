@@ -296,6 +296,45 @@ def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_da
     return expected_syn_per_gene_per_sample
 
 
+def compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples, single_sample = False):
+    """
+    Required information:
+            All possible sites in the panel regions
+            Depth per site per sample
+    Output:
+        mean coverage per gene & sample
+        relative coverage per gene within sample
+    """
+    all_possible_synonymous_sites = all_possible_sites_annotated[all_possible_sites_annotated["IMPACT"] == "synonymous"][["CHROM", "POS", "GENE"]].reset_index(drop = True)
+    all_synonymous_sites_depth = all_possible_synonymous_sites.merge(depth_dataframe, on = ["CHROM", "POS"], how = "left")
+
+    # wide format
+    if single_sample:
+        logger.debug("Running in single sample mode.")
+        logger.debug(all_synonymous_sites_depth.columns)
+        samples_names = [x for x in all_synonymous_sites_depth.columns if x not in ["CHROM", "POS", "REF", "ALT", "GENE", "IMPACT", "CONTEXT_MUT"] ]
+        logger.debug(samples_names)
+        depth_per_gene_sample_wide = all_synonymous_sites_depth.groupby(
+                                                                    by = ["GENE"])[samples_names].sum().sum(axis=1).reset_index()
+        depth_per_gene_sample_wide.columns = ["GENE", single_sample]
+
+    else:
+        depth_per_gene_sample_wide = all_synonymous_sites_depth.groupby(
+                                                                    by = ["GENE"])[samples].sum().reset_index()
+
+    depth_per_gene_sample_wide[samples] = depth_per_gene_sample_wide[samples].fillna(0).astype(float)
+
+    depth_per_gene_sample_wide = depth_per_gene_sample_wide.set_index("GENE")
+
+    # Then, we would only need to correct for the differences in coverage between the genes within a sample.
+    # We could do this by computing the average depth per gene and then center the vector to 1. 
+    # RDgenes specific for each sample.
+    relative_depth_per_gene_sample_wide = depth_per_gene_sample_wide[samples] / depth_per_gene_sample_wide[samples].mean()
+
+    return depth_per_gene_sample_wide, relative_depth_per_gene_sample_wide
+    #return relative_depth_per_gene_sample_wide
+
+
 def compute_mutabilities(alpha_per_sample, mut_probability, samples):
 
     mutability_all_samples = pd.DataFrame()
@@ -463,11 +502,30 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         # Normalize the counts of mutations per gene to ensure that the values are relative and sum to 1
         relative_syn_muts_per_gene_allsamples = relative_syn_muts_per_gene_allsamples / relative_syn_muts_per_gene_allsamples.sum()
 
+        # Add adjustment based on relative average depth per gene
+        abs_depth_per_gene, relative_depth_per_gene = compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples)
+        # relative_depth_per_gene = compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples)
+
+
+
+        # multiply the vector correcting for the general distribution of mutations
+        # and the relative depth per gene per sample
+        correction_per_gene_sample = relative_depth_per_gene.merge(relative_syn_muts_per_gene_allsamples, on = "GENE", how = 'outer')
+
+        for sampleee in samples:
+            correction_per_gene_sample[sampleee] = correction_per_gene_sample[sampleee] * correction_per_gene_sample["SYNONYMOUS_MUTS"]
+
+        correction_per_gene_sample = (correction_per_gene_sample[samples] / correction_per_gene_sample[samples].sum()).fillna(0)
+
+
+
         # Count how many synonymous mutations are there in each sample irrespective of the gene
         syn_muts_per_sample = obs_muts_per_gene_impact_context_sample_wide[
                                                             obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
                                                         ].reset_index(drop = True)[samples].sum()
         syn_muts_per_sample_df = pd.DataFrame(syn_muts_per_sample).T
+
+
 
         # Multiply the two "vectors" to get a value of synonymous mutations per sample per gene
         result_array = relative_syn_muts_per_gene_allsamples.values * syn_muts_per_sample_df.values
@@ -477,12 +535,23 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                             columns= syn_muts_per_sample_df.columns,
                                                             index=relative_syn_muts_per_gene_allsamples.index)
         obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_sample.reset_index()
+        old_obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_sample.copy()
+
         logger.debug("Synonynmous computed from the total number of observed synonymous and distributed according to the relative counts in the custom file provided.")
         # print('CV', obs_syn_muts_per_gene_sample)
+       
+
+        # Multiply correction_per_gene_sample by syn_muts_per_sample_df to adjust for the number of mutations
+        # We need to make sure that each sample column in correction_per_gene_sample is scaled
+        # by the corresponding value in syn_muts_per_sample_df
+        corrected_mutations_per_gene_sample = correction_per_gene_sample[samples].multiply(syn_muts_per_sample_df[samples].values, axis=1).reset_index()
+
+        obs_syn_muts_per_gene_sample = corrected_mutations_per_gene_sample.copy()
+
 
     elif absent_synonymous == 'infer_covariates':
         pass
-    
+
     # else:
     elif absent_synonymous == 'ignore':
     # Count of observed synonymous mutations per sample and gene
@@ -497,7 +566,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     if syn_muts_table:
         syn_muts2store = obs_syn_muts_per_gene_sample.copy()
         syn_muts2store = syn_muts2store.groupby(by = ["GENE"]).sum()[samples].sum(axis = 1).reset_index()
-        syn_muts2store.columns = ["GENE", "SYNONYMOUS_MUTS"]
+#        syn_muts2store.columns = ["GENE", "SYNONYMOUS_MUTS"]
         syn_muts2store.to_csv(f"{syn_muts_table}",
                                 header = True,
                                 index = False,
