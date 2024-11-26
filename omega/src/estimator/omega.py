@@ -131,6 +131,8 @@ class dNdS:
 
     def mle_run(self, debug=False):
         
+        dispersion = self.dispersion
+        
         def minus_log_like(w):
             mu = w * self.l
             if dispersion > 0:
