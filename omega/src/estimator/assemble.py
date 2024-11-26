@@ -232,4 +232,7 @@ class Assembler:
                     if np.all(l == 0.):
                         logger.warning(f"Lambdas are 0, we are ignoring this case {sample_set}, {impact_set}, {gene_set}.")
                         continue
+                    if np.all(n == 0.):
+                        logger.warning(f"There is no mutation, we are ignoring this case {sample_set}, {impact_set}, {gene_set}.")
+                        continue
                     yield (gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n)
