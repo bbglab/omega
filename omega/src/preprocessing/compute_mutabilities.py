@@ -95,7 +95,8 @@ def annotate_mutations_using_vep(maf, all_possible_sites_annotated):
 
 
 def compute_mutations_per_sample_gene_impact_context_table(annotated_minimal_maf,
-                                                            impacts_to_exclude = ["non_genic_variant", "intron_variant"]):
+                                                            impacts_to_exclude = ["non_genic_variant", "intron_variant"]
+                                                            ):
     # TODO
     # revise the default list of excluded impacts
     """
@@ -103,6 +104,9 @@ def compute_mutations_per_sample_gene_impact_context_table(annotated_minimal_maf
         - The observed mutations annotated
     and returns:
         - a table with the number of mutations per sample, gene, impact and context
+    
+    here the total number of mutations per sample, gene, impact and context can be higher than the number of sites when counting them 1x
+    if the effective_muts are being computed with the ALT_DEPTH
     """
     # TODO
     # revise whether we are interested in doing it this way or not
@@ -510,6 +514,10 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                         pseudocount = 0.5)
         logger.info("Mutational profile computed")
 
+
+    # until here looks good to me
+    # only a minimal change required to ensure that the mutational_profile can also be provided for multiple samples at once
+
     # Compute expected synonymous mutations
     expected_syn_per_gene_per_sample = compute_expected_synonymous_mutations(all_possible_sites_annotated,
                                                                                 depth_dataframe,
@@ -529,6 +537,9 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         # Add adjustment based on relative average depth per gene
         abs_depth_per_gene, relative_depth_per_gene = compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples)
         # relative_depth_per_gene = compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples)
+
+
+        # syn_mutrate * (depth * (sample_mut_profile/all_samples_mut_profile) )
 
 
 
