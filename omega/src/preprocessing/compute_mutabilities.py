@@ -229,6 +229,11 @@ def compute_mutational_profile(annotated_minimal_maf, all_possible_sites_annotat
 
 def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_dataframe, mut_probability, samples, single_sample = False):
     """
+    Goal:
+        Based on the number of sites, depth, and mutational profile, infer how many synonymous mutation we would expect to see.
+        This comes from absolute vales, such as the depth, but also relative values such as the mutation probablity,
+        however we are not using the absolute value of depth at any time, only as a measure of a position being covered or not.
+
     Required information:
             All possible sites in the panel regions
             Depth per site per sample (only used as a binary dataframe, covered or not covered)
@@ -369,31 +374,50 @@ def compute_mutabilities(alpha_per_sample, mut_probability, samples):
 
 
 def adapt_mutational_profile(mut_profile_file, samples):
-    '''
-    When the user provides a custom mutational profile to be used in the process
-    this function processes it to make sure that:
-    - it has the proper format
-    - if there is any 0 we add the minimum value of the mutational profile as a pseudocount and renormalize
-    '''
+    """
+    Process a custom mutational profile provided by the user to ensure:
+        - Proper format.
+        - Any zeros are replaced with a pseudocount equal to the minimum non-zero value, 
+          followed by renormalization.
+    
+    Args:
+        mut_profile_file (str): Path to the mutational profile file (tab-separated).
+        samples (list): List of sample names to include in the process.
 
-    mut_probability = pd.read_csv(mut_profile_file, sep = "\t", header = 0, index_col = 0)
-    mut_probability.columns = [ x.split(".")[0] for x in mut_probability.columns ]
+    Returns:
+        pd.DataFrame: Processed mutational profile with appropriate pseudocounts and normalization.
+    
+    Note: this function can receive a dataframe containing a column per sample and should be able to handle it
+    """
+    # Load the mutational profile
+    mut_probability = pd.read_csv(mut_profile_file, sep="\t", header=0, index_col=0)
+    mut_probability.columns = [x.split(".")[0] for x in mut_probability.columns]
+
+    # Filter for the specified samples
     mut_probability = mut_probability[samples].copy()
 
-    empty_matrix = pd.DataFrame(index = contexts_formatted)
-    mut_probability = pd.concat( (empty_matrix, mut_probability) , axis = 1)
+    # Create an empty matrix with all contexts, filling missing entries with zeros
+    empty_matrix = pd.DataFrame(index=contexts_formatted)
+    mut_probability = pd.concat((empty_matrix, mut_probability), axis=1)
     mut_probability = mut_probability.fillna(0)
-    
-    # if there is any null value, add a pseudocount
+
+    # If there are zeros, add a pseudocount
     if (mut_probability == 0).any().any():
-        # Add 0.5 to all values
-        logger.info("Adding a pseudocount of {}".format(min(mut_probability)))
-        mut_probability += min(mut_probability)
+        # Add pseudocount: minimum non-zero value
+        min_value = mut_probability[mut_probability > 0].min().min()
+        pseudocount = min_value if min_value > 0 else 1e-6  # Fallback to a small value if necessary
+        logger.info("Adding a pseudocount of {}".format(pseudocount))
+        mut_probability += pseudocount
 
-    mut_probability = mut_probability / mut_probability.sum()
+    # Renormalize each column (sample) independently
+    mut_probability = mut_probability.div(mut_probability.sum(axis=0), axis=1)
 
+    # Add the context mutation name to the index
     mut_probability.index.name = "CONTEXT_MUT"
     return mut_probability.reset_index()
+
+
+
 
 
 def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
