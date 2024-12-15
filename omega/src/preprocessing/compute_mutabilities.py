@@ -260,6 +260,9 @@ def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_da
         logger.debug(all_possible_sites_per_sample.columns)
         samples_names = [x for x in all_possible_sites_per_sample.columns if x not in ["CHROM", "POS", "REF", "ALT", "GENE", "IMPACT", "CONTEXT_MUT"] ]
         logger.debug(samples_names)
+
+        # this number should be at most, the total number of samples in the group that is being run
+        # whenever you are running a group this should never be 1...
         sites_per_gene_impact_context_sample_wide = all_possible_sites_per_sample.groupby(
                                                                     by = ["GENE", "IMPACT", "CONTEXT_MUT"])[samples_names].sum().sum(axis=1).reset_index()
         sites_per_gene_impact_context_sample_wide.columns = ["GENE", "IMPACT", "CONTEXT_MUT", single_sample]
@@ -317,6 +320,9 @@ def compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, sa
     all_possible_synonymous_sites = all_possible_sites_annotated[all_possible_sites_annotated["IMPACT"] == "synonymous"][["CHROM", "POS", "GENE"]].reset_index(drop = True)
     all_synonymous_sites_depth = all_possible_synonymous_sites.merge(depth_dataframe, on = ["CHROM", "POS"], how = "left")
 
+    # all_synonymous_sites_depth
+    # contains information about: gene, trinucleotide and depth
+
     # wide format
     if single_sample:
         logger.debug("Running in single sample mode.")
@@ -342,6 +348,91 @@ def compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, sa
 
     return depth_per_gene_sample_wide, relative_depth_per_gene_sample_wide
     #return relative_depth_per_gene_sample_wide
+
+
+
+def compute_sample_gene_specific_differences(all_possible_sites_annotated, depth_dataframe,
+                                               mut_probability_total,
+                                               mut_probability,
+                                               samples, single_sample = False):
+    """
+    Required information:
+            All possible sites in the panel regions
+            Depth per site per sample
+            mutational profile
+    Output:
+        mean coverage per gene & sample
+        relative coverage per gene within sample
+    """
+    all_possible_synonymous_sites = all_possible_sites_annotated[all_possible_sites_annotated["IMPACT"] == "synonymous"][["CHROM", "POS", "GENE", "CONTEXT_MUT"]].reset_index(drop = True)
+    
+    # annotate the synonymous sites with depth information
+    all_synonymous_sites_depth = all_possible_synonymous_sites.merge(depth_dataframe, on = ["CHROM", "POS"], how = "left")
+    # contains information about: gene, trinucleotide and depth
+    logger.debug("Depth in synonymous sites of the gene")
+    print(all_synonymous_sites_depth.head())
+    print(all_synonymous_sites_depth.sum())
+
+    # # wide format
+    # if single_sample:
+    #     logger.debug("Running in single sample mode.")
+    #     logger.debug(all_synonymous_sites_depth.columns)
+    #     samples_names = [x for x in all_synonymous_sites_depth.columns if x not in ["CHROM", "POS", "REF", "ALT", "GENE", "IMPACT", "CONTEXT_MUT"] ]
+    #     logger.debug(samples_names)
+    #     depth_per_context_gene_sample_wide = all_synonymous_sites_depth.groupby(
+    #                                                                 by = ["GENE", "CONTEXT_MUT"])[samples_names].sum().sum(axis=1).reset_index()
+    #     depth_per_context_gene_sample_wide.columns = ["GENE", single_sample]
+    
+    samples_names = [x for x in all_synonymous_sites_depth.columns if x not in ["CHROM", "POS", "REF", "ALT", "GENE", "IMPACT", "CONTEXT_MUT"] ]
+    logger.debug(samples_names)
+
+    # group all positions by GENE n CONTEXT_MUT,
+    # we do not expect any differences within trinucleotides of the same gene, except for the depth,
+    # but we are not looking at specific position differences here, but more at the gene level
+    depth_per_context_gene_sample_wide = all_synonymous_sites_depth.groupby(
+                                                                by = ["GENE", "CONTEXT_MUT"])[samples].sum().reset_index()
+    depth_per_context_gene_sample_wide[samples] = depth_per_context_gene_sample_wide[samples].fillna(0).astype(float)
+    
+    print(depth_per_context_gene_sample_wide.head())
+
+    mut_probability_ind = mut_probability.set_index("CONTEXT_MUT")
+    mut_probability_total_ind = mut_probability_total.set_index("CONTEXT_MUT")
+    # normalize sample specific mutational profile compared to the all_samples one
+    mut_probability_norm = (mut_probability_ind / mut_probability_total_ind).reset_index()
+    # print(mut_probability_norm)
+
+    # merge the depth per context gene with the correction of the mutation probability
+    probability_depth_per_context_gene_sample_wide = depth_per_context_gene_sample_wide.merge(mut_probability_norm,
+                                                                                  on = 'CONTEXT_MUT',
+                                                                                  suffixes = [".sites", ".probability_correction"],
+                                                                                  )
+    print(probability_depth_per_context_gene_sample_wide.head())
+
+    # apply the correction of difference in mutational profile
+    corrected_depth_per_context_gene_sample_wide = probability_depth_per_context_gene_sample_wide[["GENE", "CONTEXT_MUT"]].copy()
+    for sample in samples:
+        corrected_depth_per_context_gene_sample_wide[sample] = probability_depth_per_context_gene_sample_wide[f"{sample}.sites"] * probability_depth_per_context_gene_sample_wide[f"{sample}.probability_correction"]
+
+    # add up all the corrections to gene level depth
+    context_corrected_depth_per_gene_sample_wide = corrected_depth_per_context_gene_sample_wide.groupby(
+                                                                    by = ["GENE"])[samples].sum()
+
+    # print(context_corrected_depth_per_gene_sample_wide)
+    # then we should multiply this by the gene mutation rate per bp
+    
+    # gene_mutrate_per_bp_allsamples
+    # should be a GENE indexed pandas.Series that contains what it's name suggests
+
+    # result = context_corrected_depth_per_gene_sample_wide * gene_mutrate_per_bp_allsamples
+    # result # is potentially already a candidate number of synonymous mutations per gene in the sample
+
+    # result2 = num_synonymous * ( result /result.sum() )
+
+
+    return context_corrected_depth_per_gene_sample_wide
+    #return relative_depth_per_gene_sample_wide
+
+
 
 
 def compute_mutabilities(alpha_per_sample, mut_probability, samples):
@@ -433,7 +524,8 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                     mut_profile = None,
                                     single_sample = None,
                                     absent_synonymous = 'ignore',
-                                    relative_synonymous_muts_file = None
+                                    relative_synonymous_muts_file = None,
+                                    gene_mutation_rates_file = 'mutation_rates_per_gene.tsv'
                                     ):
     """
     Wrapper for all the steps required to compute the mutabilities per sample, gene and context
@@ -469,6 +561,10 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         logger.debug("Mutations subsetted")
 
     depth_dataframe = depth_dataframe[["CHROM", "POS"] + samples].copy()
+    print(depth_dataframe.head())
+    depth_dataframe_small = depth_dataframe[["CHROM", "POS"] + samples].copy()
+    depth_dataframe_small[samples] = depth_dataframe_small[samples]/3
+    print(depth_dataframe_small.head())
     logger.debug("Depths subsetted")
 
 
@@ -504,6 +600,11 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     # Compute mutational profile from the input data
     if mut_profile:
         mut_probability = adapt_mutational_profile(mut_profile, samples)
+        mut_profile2 = pd.read_table("P19_0033_BTR_01.all.profile.tsv")
+        print(mut_profile2.columns)
+        mut_probability2 = adapt_mutational_profile("P19_0033_BTR_01.all.profile.tsv", ["P19_0033_BTR_01"])
+        print(mut_probability2.columns)
+        mut_probability2.columns = ['CONTEXT_MUT', 'all_samples']
         logger.info("Mutational profile loaded")
 
     else:
@@ -516,7 +617,6 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
 
     # until here looks good to me
-    # only a minimal change required to ensure that the mutational_profile can also be provided for multiple samples at once
 
     # Compute expected synonymous mutations
     expected_syn_per_gene_per_sample = compute_expected_synonymous_mutations(all_possible_sites_annotated,
@@ -524,6 +624,41 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                                                 mut_probability,
                                                                                 samples)
     logger.debug("Expected synonymous computed")
+
+
+    gene_mutation_rates = pd.read_table(gene_mutation_rates_file)
+    gene_mutation_rates = gene_mutation_rates.set_index('GENE')
+    gene_mutation_rates = gene_mutation_rates / 1e6
+
+    sample_specific_biases = compute_sample_gene_specific_differences(all_possible_sites_annotated,
+                                             depth_dataframe_small,
+                                             mut_probability,
+                                             mut_probability2,
+                                             samples)
+    print(sample_specific_biases)
+    print(gene_mutation_rates)
+
+    mutation_numbers = sample_specific_biases.merge(gene_mutation_rates, on = 'GENE').fillna(0)
+    print(mutation_numbers)
+
+    mutation_numbers = mutation_numbers.iloc[:,0] * mutation_numbers.iloc[:,1]
+    print("computed synonymous mutation numbers")
+    print(mutation_numbers)
+
+
+    print(obs_muts_per_gene_impact_context_sample_wide[
+                                                            obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
+                                                        ].reset_index(drop = True)[samples].sum()
+    )
+
+
+    print(obs_muts_per_gene_impact_context_sample_wide[
+                                                            obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
+                                                        ].reset_index(drop = True).groupby(by = 'GENE')[samples].sum()
+    )
+
+    exit(1)
+
 
 
     if absent_synonymous == 'infer_global_custom':
@@ -535,7 +670,12 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         relative_syn_muts_per_gene_allsamples = relative_syn_muts_per_gene_allsamples / relative_syn_muts_per_gene_allsamples.sum()
 
         # Add adjustment based on relative average depth per gene
-        abs_depth_per_gene, relative_depth_per_gene = compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples)
+        abs_depth_per_gene, relative_depth_per_gene = compute_sample_gene_specific_differences(all_possible_sites_annotated,
+                                                                                                 depth_dataframe_small,
+                                                                                                 mut_probability,
+                                                                                                 mut_probability,
+                                                                                                 samples)
+        # abs_depth_per_gene, relative_depth_per_gene = compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples)
         # relative_depth_per_gene = compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples)
 
 
