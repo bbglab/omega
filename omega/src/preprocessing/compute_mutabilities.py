@@ -368,10 +368,12 @@ def compute_sample_gene_specific_differences(all_possible_sites_annotated, depth
     
     # annotate the synonymous sites with depth information
     all_synonymous_sites_depth = all_possible_synonymous_sites.merge(depth_dataframe, on = ["CHROM", "POS"], how = "left")
-    # contains information about: gene, trinucleotide and depth
-    logger.debug("Depth in synonymous sites of the gene")
-    print(all_synonymous_sites_depth.head())
-    print(all_synonymous_sites_depth.sum())
+    # contains information about: gene, chromosome, positions, trinucleotide and depth
+    # logger.debug("Depth in synonymous sites of the gene")
+    # print(all_synonymous_sites_depth.head())
+    # print(all_synonymous_sites_depth.sum())
+
+
 
     # # wide format
     # if single_sample:
@@ -397,8 +399,20 @@ def compute_sample_gene_specific_differences(all_possible_sites_annotated, depth
 
     mut_probability_ind = mut_probability.set_index("CONTEXT_MUT")
     mut_probability_total_ind = mut_probability_total.set_index("CONTEXT_MUT")
+
+    print(mut_probability_ind.sum())
+    print(mut_probability_total_ind.sum())
+
+    # TODO
+    # revise if this division makes sense or we would need to center the resulting vector or something
+
     # normalize sample specific mutational profile compared to the all_samples one
     mut_probability_norm = (mut_probability_ind / mut_probability_total_ind).reset_index()
+    # mut_probability_norm = ( mut_probability_total_ind / mut_probability_ind).reset_index()
+    # print(mut_probability_total_ind / mut_probability_ind)
+    # print((mut_probability_total_ind / mut_probability_ind).sum())
+    # print(mut_probability_ind / mut_probability_total_ind)
+    # print((mut_probability_ind / mut_probability_total_ind).sum())
     # print(mut_probability_norm)
 
     # merge the depth per context gene with the correction of the mutation probability
@@ -468,7 +482,7 @@ def compute_mutabilities(alpha_per_sample, mut_probability, samples):
 
 
 
-def adapt_mutational_profile(mut_profile_file, samples):
+def adapt_mutational_profile(mut_profile_file, samples = None):
     """
     Process a custom mutational profile provided by the user to ensure:
         - Proper format.
@@ -488,14 +502,17 @@ def adapt_mutational_profile(mut_profile_file, samples):
     mut_probability = pd.read_csv(mut_profile_file, sep="\t", header=0, index_col=0)
     mut_probability.columns = [x.split(".")[0] for x in mut_probability.columns]
 
-    # Filter for the specified samples
-    mut_probability = mut_probability[samples].copy()
+    if samples is not None:
+        # Filter for the specified samples
+        mut_probability = mut_probability[samples].copy()
 
     # Create an empty matrix with all contexts, filling missing entries with zeros
     empty_matrix = pd.DataFrame(index=contexts_formatted)
     mut_probability = pd.concat((empty_matrix, mut_probability), axis=1)
     mut_probability = mut_probability.fillna(0)
 
+    # TODO
+    # revise that this way of adding a pseudocount makes sense
     # If there are zeros, add a pseudocount
     if (mut_probability == 0).any().any():
         # Add pseudocount: minimum non-zero value
@@ -522,10 +539,10 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                     mutability_table,
                                     syn_muts_table,
                                     mut_profile = None,
+                                    mut_profile_global = None,
                                     single_sample = None,
                                     absent_synonymous = 'ignore',
-                                    relative_synonymous_muts_file = None,
-                                    gene_mutation_rates_file = 'mutation_rates_per_gene.tsv'
+                                    gene_mutation_rates_file = None
                                     ):
     """
     Wrapper for all the steps required to compute the mutabilities per sample, gene and context
@@ -538,8 +555,11 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
     if absent_synonymous == 'infer_global_custom':
         # check if exists
-        if not os.path.isfile(relative_synonymous_muts_file):
-            logger.debug(f"Relative synonymous mutations file : {relative_synonymous_muts_file} does not exist")
+        if not os.path.isfile(gene_mutation_rates_file):
+            logger.debug(f"Gene synonymous mutations file : {gene_mutation_rates_file} does not exist")
+        if not os.path.isfile(mut_profile_global):
+            logger.debug(f"Global mutational profile file : {mut_profile_global} does not exist")
+            
 
     logger.debug("Inputs loaded")
     # Annotate mutations
@@ -561,10 +581,8 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         logger.debug("Mutations subsetted")
 
     depth_dataframe = depth_dataframe[["CHROM", "POS"] + samples].copy()
-    print(depth_dataframe.head())
     depth_dataframe_small = depth_dataframe[["CHROM", "POS"] + samples].copy()
     depth_dataframe_small[samples] = depth_dataframe_small[samples]/3
-    print(depth_dataframe_small.head())
     logger.debug("Depths subsetted")
 
 
@@ -600,98 +618,96 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     # Compute mutational profile from the input data
     if mut_profile:
         mut_probability = adapt_mutational_profile(mut_profile, samples)
-        mut_profile2 = pd.read_table("P19_0033_BTR_01.all.profile.tsv")
-        print(mut_profile2.columns)
-        mut_probability2 = adapt_mutational_profile("P19_0033_BTR_01.all.profile.tsv", ["P19_0033_BTR_01"])
-        print(mut_probability2.columns)
-        mut_probability2.columns = ['CONTEXT_MUT', 'all_samples']
-        logger.info("Mutational profile loaded")
+        logger.info("Mutational profile loaded")       
 
     else:
         mut_probability = compute_mutational_profile(annotated_minimal_maf,
                                                         all_possible_sites_annotated,
                                                         depth_dataframe,
                                                         samples,
-                                                        pseudocount = 0.5)
+                                                        pseudocount = 0.5 # FIXME revise if this value makes sense
+                                                        )
         logger.info("Mutational profile computed")
-
 
     # until here looks good to me
 
+
+    # I want to revise this one in more detail.
     # Compute expected synonymous mutations
     expected_syn_per_gene_per_sample = compute_expected_synonymous_mutations(all_possible_sites_annotated,
                                                                                 depth_dataframe,
                                                                                 mut_probability,
                                                                                 samples)
-    logger.debug("Expected synonymous computed")
-
-
-    gene_mutation_rates = pd.read_table(gene_mutation_rates_file)
-    gene_mutation_rates = gene_mutation_rates.set_index('GENE')
-    gene_mutation_rates = gene_mutation_rates / 1e6
-
-    sample_specific_biases = compute_sample_gene_specific_differences(all_possible_sites_annotated,
-                                             depth_dataframe_small,
-                                             mut_probability,
-                                             mut_probability2,
-                                             samples)
-    print(sample_specific_biases)
-    print(gene_mutation_rates)
-
-    mutation_numbers = sample_specific_biases.merge(gene_mutation_rates, on = 'GENE').fillna(0)
-    print(mutation_numbers)
-
-    mutation_numbers = mutation_numbers.iloc[:,0] * mutation_numbers.iloc[:,1]
-    print("computed synonymous mutation numbers")
-    print(mutation_numbers)
-
-
-    print(obs_muts_per_gene_impact_context_sample_wide[
-                                                            obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
-                                                        ].reset_index(drop = True)[samples].sum()
-    )
-
-
-    print(obs_muts_per_gene_impact_context_sample_wide[
-                                                            obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
-                                                        ].reset_index(drop = True).groupby(by = 'GENE')[samples].sum()
-    )
-
-    exit(1)
+    logger.debug("Theoretical expected synonymous computed")
 
 
 
     if absent_synonymous == 'infer_global_custom':
-        relative_syn_muts_per_gene_allsamples = pd.read_csv(relative_synonymous_muts_file,
-                                                        sep = "\t", header = 0,
-                                                        dtype = {"GENE" : str, "SYNONYMOUS_MUTS": float}).set_index("GENE")
+        ## FIXME
+        # this will keep the original samples' name, even multiple columns if single sample is not activated
+        mut_probability_global = adapt_mutational_profile(mut_profile_global)
 
-        # Normalize the counts of mutations per gene to ensure that the values are relative and sum to 1
-        relative_syn_muts_per_gene_allsamples = relative_syn_muts_per_gene_allsamples / relative_syn_muts_per_gene_allsamples.sum()
+        # this might not work if there are more than one column            
+        mut_probability_global.columns = ['CONTEXT_MUT'] + samples
+        logger.info("Global mutational profile loaded")
 
-        # Add adjustment based on relative average depth per gene
-        abs_depth_per_gene, relative_depth_per_gene = compute_sample_gene_specific_differences(all_possible_sites_annotated,
-                                                                                                 depth_dataframe_small,
-                                                                                                 mut_probability,
-                                                                                                 mut_probability,
-                                                                                                 samples)
-        # abs_depth_per_gene, relative_depth_per_gene = compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples)
-        # relative_depth_per_gene = compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples)
-
-
+        #######
+        ## the following lines follow this correction strategy
+        #######
         # syn_mutrate * (depth * (sample_mut_profile/all_samples_mut_profile) )
+        #######
+
+        # this term is loaded from the cohort information:
+        # syn_mutrate
+
+        # Read mutation rates per MB
+        gene_mutation_rates = pd.read_table(gene_mutation_rates_file)
+        gene_mutation_rates = gene_mutation_rates.set_index('GENE')
+        logger.info("Gene mutation rates loaded")
+        
+        ## FIXME
+        # revise if this should be changed and mutrates should be provided without normalization
+
+        # remove the per MB correction
+        gene_mutation_rates = gene_mutation_rates / 1e6
+
+        # this term is computed here
+        # (depth * (sample_mut_profile/all_samples_mut_profile) )
+        # we get a value per gene
+        sample_specific_biases = compute_sample_gene_specific_differences(all_possible_sites_annotated,
+                                                depth_dataframe_small,
+                                                mut_probability_global,
+                                                mut_probability,                                                
+                                                samples)
+        logger.info("Sample specific biases computed based on mutational profile and sequencing depth")
+
+        weighted_depth_n_mutrate = sample_specific_biases.merge(gene_mutation_rates, on = 'GENE').fillna(0)
+        print(weighted_depth_n_mutrate)
+
+        mutation_numbers = weighted_depth_n_mutrate.iloc[:,0] * weighted_depth_n_mutrate.iloc[:,1]
+        print("computed synonymous mutation numbers from global mutrate")
+        print(mutation_numbers)
 
 
+        print(obs_muts_per_gene_impact_context_sample_wide[
+                                                            obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
+                                                            ].reset_index(drop = True)[samples].sum()
+        )
 
-        # multiply the vector correcting for the general distribution of mutations
-        # and the relative depth per gene per sample
-        correction_per_gene_sample = relative_depth_per_gene.merge(relative_syn_muts_per_gene_allsamples, on = "GENE", how = 'outer')
 
-        for sampleee in samples:
-            correction_per_gene_sample[sampleee] = correction_per_gene_sample[sampleee] * correction_per_gene_sample["SYNONYMOUS_MUTS"]
+        print(obs_muts_per_gene_impact_context_sample_wide[
+                                                                obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
+                                                            ].reset_index(drop = True).groupby(by = 'GENE')[samples].sum()
+        )
 
-        correction_per_gene_sample = (correction_per_gene_sample[samples] / correction_per_gene_sample[samples].sum()).fillna(0)
 
+        # mutation_numbers 
+        # is a potential output number of mutations per gene per sample
+        # using the global synonymous mutation rates
+
+        # the alternative option is to use the counts from mutation_numbers
+        # to redistribute the observed number of synonymous mutations observed in that sample
+        relative_syn_muts_per_gene_allsamples = mutation_numbers / mutation_numbers.sum()
 
 
         # Count how many synonymous mutations are there in each sample irrespective of the gene
@@ -701,28 +717,19 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         syn_muts_per_sample_df = pd.DataFrame(syn_muts_per_sample).T
 
 
-
         # Multiply the two "vectors" to get a value of synonymous mutations per sample per gene
         result_array = relative_syn_muts_per_gene_allsamples.values * syn_muts_per_sample_df.values
 
         # put the right names to the rows and columns
-        obs_syn_muts_per_gene_sample = pd.DataFrame(result_array,
+        obs_syn_muts_per_gene_sample = pd.DataFrame(result_array.T,
                                                             columns= syn_muts_per_sample_df.columns,
                                                             index=relative_syn_muts_per_gene_allsamples.index)
         obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_sample.reset_index()
-        old_obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_sample.copy()
+        print("computed synonymous mutation numbers after normalizing")
+        print(obs_syn_muts_per_gene_sample)
 
         logger.debug("Synonynmous computed from the total number of observed synonymous and distributed according to the relative counts in the custom file provided.")
         # print('CV', obs_syn_muts_per_gene_sample)
-       
-
-        # Multiply correction_per_gene_sample by syn_muts_per_sample_df to adjust for the number of mutations
-        # We need to make sure that each sample column in correction_per_gene_sample is scaled
-        # by the corresponding value in syn_muts_per_sample_df
-        corrected_mutations_per_gene_sample = correction_per_gene_sample[samples].multiply(syn_muts_per_sample_df[samples].values, axis=1).reset_index()
-
-        obs_syn_muts_per_gene_sample = corrected_mutations_per_gene_sample.copy()
-
 
     elif absent_synonymous == 'infer_covariates':
         pass
