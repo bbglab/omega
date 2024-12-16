@@ -307,50 +307,6 @@ def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_da
     
     return expected_syn_per_gene_per_sample
 
-
-def compute_rel_depth_per_gene(all_possible_sites_annotated, depth_dataframe, samples, single_sample = False):
-    """
-    Required information:
-            All possible sites in the panel regions
-            Depth per site per sample
-    Output:
-        mean coverage per gene & sample
-        relative coverage per gene within sample
-    """
-    all_possible_synonymous_sites = all_possible_sites_annotated[all_possible_sites_annotated["IMPACT"] == "synonymous"][["CHROM", "POS", "GENE"]].reset_index(drop = True)
-    all_synonymous_sites_depth = all_possible_synonymous_sites.merge(depth_dataframe, on = ["CHROM", "POS"], how = "left")
-
-    # all_synonymous_sites_depth
-    # contains information about: gene, trinucleotide and depth
-
-    # wide format
-    if single_sample:
-        logger.debug("Running in single sample mode.")
-        logger.debug(all_synonymous_sites_depth.columns)
-        samples_names = [x for x in all_synonymous_sites_depth.columns if x not in ["CHROM", "POS", "REF", "ALT", "GENE", "IMPACT", "CONTEXT_MUT"] ]
-        logger.debug(samples_names)
-        depth_per_gene_sample_wide = all_synonymous_sites_depth.groupby(
-                                                                    by = ["GENE"])[samples_names].sum().sum(axis=1).reset_index()
-        depth_per_gene_sample_wide.columns = ["GENE", single_sample]
-
-    else:
-        depth_per_gene_sample_wide = all_synonymous_sites_depth.groupby(
-                                                                    by = ["GENE"])[samples].sum().reset_index()
-
-    depth_per_gene_sample_wide[samples] = depth_per_gene_sample_wide[samples].fillna(0).astype(float)
-
-    depth_per_gene_sample_wide = depth_per_gene_sample_wide.set_index("GENE")
-
-    # Then, we would only need to correct for the differences in coverage between the genes within a sample.
-    # We could do this by computing the average depth per gene and then center the vector to 1. 
-    # RDgenes specific for each sample.
-    relative_depth_per_gene_sample_wide = depth_per_gene_sample_wide[samples] / depth_per_gene_sample_wide[samples].mean()
-
-    return depth_per_gene_sample_wide, relative_depth_per_gene_sample_wide
-    #return relative_depth_per_gene_sample_wide
-
-
-
 def compute_sample_gene_specific_differences(all_possible_sites_annotated, depth_dataframe,
                                                mut_probability_total,
                                                mut_probability,
@@ -444,7 +400,6 @@ def compute_sample_gene_specific_differences(all_possible_sites_annotated, depth
 
 
     return context_corrected_depth_per_gene_sample_wide
-    #return relative_depth_per_gene_sample_wide
 
 
 
@@ -690,12 +645,6 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
 
         print(obs_muts_per_gene_impact_context_sample_wide[
-                                                            obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
-                                                            ].reset_index(drop = True)[samples].sum()
-        )
-
-
-        print(obs_muts_per_gene_impact_context_sample_wide[
                                                                 obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
                                                             ].reset_index(drop = True).groupby(by = 'GENE')[samples].sum()
         )
@@ -801,22 +750,22 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    ## Input
-    depth_dataframe_file = "/workspace/datasets/prominent/data/kidney/depth/2023-06-30.kidney_panel.chr.633.tsv.gz"
-    mutations_file = "/workspace/datasets/prominent/data/kidney/mutations/2023-06-30.kidney.633.maf.annot.tsv.gz"
-    all_possible_sites_annotated_file = "./test/preprocessing/KidneyPanel.sites.bed_panel.annotation_summary.tsv"
+#     ## Input
+#     depth_dataframe_file = "/workspace/datasets/prominent/data/kidney/depth/2023-06-30.kidney_panel.chr.633.tsv.gz"
+#     mutations_file = "/workspace/datasets/prominent/data/kidney/mutations/2023-06-30.kidney.633.maf.annot.tsv.gz"
+#     all_possible_sites_annotated_file = "./test/preprocessing/KidneyPanel.sites.bed_panel.annotation_summary.tsv"
 
-    ## Output
-    table_muts_x_sample_gene_impact_context = "./test/preprocessing/mutations_per_sample_gene_impact_context.count.tsv"
-    mutabilities_table = "./test/preprocessing/mutability_per_sample_gene_context.tsv"
+#     ## Output
+#     table_muts_x_sample_gene_impact_context = "./test/preprocessing/mutations_per_sample_gene_impact_context.count.tsv"
+#     mutabilities_table = "./test/preprocessing/mutability_per_sample_gene_context.tsv"
 
-    compute_mutabilities_wrapper(all_possible_sites_annotated_file,
-                                    depth_dataframe_file,
-                                    mutations_file, 
-                                    table_muts_x_sample_gene_impact_context,
-                                    mutabilities_table
-                                    )
+#     compute_mutabilities_wrapper(all_possible_sites_annotated_file,
+#                                     depth_dataframe_file,
+#                                     mutations_file, 
+#                                     table_muts_x_sample_gene_impact_context,
+#                                     mutabilities_table
+#                                     )
 
 
