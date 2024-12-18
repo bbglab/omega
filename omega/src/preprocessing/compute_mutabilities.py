@@ -362,6 +362,8 @@ def compute_sample_gene_specific_differences(all_possible_sites_annotated, depth
     # TODO
     # revise if this division makes sense or we would need to center the resulting vector or something
 
+    ## URGENT
+
     # normalize sample specific mutational profile compared to the all_samples one
     mut_probability_norm = (mut_probability_ind / mut_probability_total_ind).reset_index()
     # mut_probability_norm = ( mut_probability_total_ind / mut_probability_ind).reset_index()
