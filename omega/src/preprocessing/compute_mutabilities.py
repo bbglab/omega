@@ -678,8 +678,8 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                             ["GENE", "GENE_BASE",
                                                              "mutations_regions", "mutations_full"]
                                                              ]
-        mutation_numbers_gene_regions_with_gene_info["proportion"] = mutation_numbers_gene_regions_with_gene_info["mutations_regions"] \
-                                                                        / mutation_numbers_gene_regions_with_gene_info["mutations_full"]
+        mutation_numbers_gene_regions_with_gene_info["proportion"] = (mutation_numbers_gene_regions_with_gene_info["mutations_regions"] \
+                                                                        / mutation_numbers_gene_regions_with_gene_info["mutations_full"]).fillna(0)
         mutation_numbers_gene_regions_with_gene_info = mutation_numbers_gene_regions_with_gene_info[["GENE", "GENE_BASE","proportion"]]
         print(mutation_numbers_gene_regions_with_gene_info)
 
@@ -719,7 +719,8 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                                                                                         how = 'left',
                                                                                                                         suffixes = ("", "_gene")
                                                                                                                         )
-        mutation_numbers_gene_regions_with_gene_info_final_numbers[samples] = mutation_numbers_gene_regions_with_gene_info_final_numbers[samples[0]] \
+        print(mutation_numbers_gene_regions_with_gene_info_final_numbers)
+        mutation_numbers_gene_regions_with_gene_info_final_numbers[samples[0]] = mutation_numbers_gene_regions_with_gene_info_final_numbers[samples[0]] \
                                                                                 * mutation_numbers_gene_regions_with_gene_info_final_numbers["proportion"]
         print(mutation_numbers_gene_regions_with_gene_info_final_numbers)
         obs_syn_muts_per_gene_sample = pd.concat((obs_syn_muts_per_gene_sample,
