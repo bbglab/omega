@@ -125,7 +125,9 @@ class Assembler:
                 # for c, value in mutability_sample_dict.items():
                 #     mutability_sample_dict.update({c: max(value, 1e-4)})
 
-                mutability_sample = np.array(list(map(lambda x: mutability_sample_dict[x], region_contexts)))
+                # TODO
+                # revise if this .get(x, 0) is the right way of solving this
+                mutability_sample = np.array(list(map(lambda x: mutability_sample_dict.get(x, 0), region_contexts)))
                 fold_change = rescaling_dict[(s, g)]
                 mutability_vector = mutability_sample * fold_change
                 res[(s, g)] = mutability_vector.astype(np.float32)
