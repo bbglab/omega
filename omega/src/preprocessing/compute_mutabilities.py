@@ -619,8 +619,23 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
         # Read mutation rates per MB
         gene_mutation_rates = pd.read_table(gene_mutation_rates_file)
-        gene_mutation_rates = gene_mutation_rates.set_index('GENE')
+        gene_mutation_rates = gene_mutation_rates.set_index('GENE')["MUTRATE"]
         logger.info("Gene mutation rates loaded")
+
+        if len(gene_mutation_rates[gene_mutation_rates == 0]) > 0:
+            logger.info("The following genes have a synonymous mutation rate of 0, that needs to be filled.")
+            logger.info(gene_mutation_rates[gene_mutation_rates == 0].index)
+            # print(gene_mutation_rates.mean())
+            mean_syn_mutrate = gene_mutation_rates[gene_mutation_rates != 0].mean()
+            logger.info("They will be filled with " + str(mean_syn_mutrate))
+            gene_mutation_rates[gene_mutation_rates == 0] = mean_syn_mutrate
+            # print(gene_mutation_rates)
+
+        gene_mutation_rates = pd.DataFrame(gene_mutation_rates).reset_index()
+        gene_mutation_rates.columns = ["GENE", "MUTRATE"]
+        gene_mutation_rates = gene_mutation_rates.set_index('GENE')
+        print(gene_mutation_rates)
+
 
         ## FIXME
         # revise if this should be changed and mutrates should be provided without normalization
@@ -645,7 +660,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         # Extract the gene name before the -- (used as separator) for subgene-level data
         sample_specific_biases['GENE_BASE'] = sample_specific_biases['GENE'].str.split('--').str[0]
 
-        mutrate_columnn = [x for x in gene_mutation_rates.columns if x != 'GENE']
+        mutrate_columnn = ['MUTRATE']
         weighted_depth_n_mutrate = sample_specific_biases.merge(gene_mutation_rates,
                                                                 left_on='GENE_BASE',
                                                                 right_on='GENE',
@@ -656,8 +671,8 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         mutation_numbers = (weighted_depth_n_mutrate_ind.iloc[:,0] * weighted_depth_n_mutrate_ind.iloc[:,1]).reset_index()
         mutation_numbers.columns = ["GENE", "mutations"]
         mutation_numbers = mutation_numbers.merge(weighted_depth_n_mutrate[["GENE", "GENE_BASE"]],
-                                             on = "GENE",
-                                             how = 'left')
+                                                    on = "GENE",
+                                                    how = 'left')
         print("computed synonymous mutation numbers from global mutrate")
         print(mutation_numbers)
 
