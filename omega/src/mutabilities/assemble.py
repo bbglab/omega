@@ -40,9 +40,8 @@ class Grouping:
 
 class Assembler:
 
-    def __init__(self, depths, vep, mut_counts, mutability, group):
+    def __init__(self, depths, vep, mutability, group):
 
-        self.mut_counts = mut_counts
         self.mutability = mutability
         
         # dict with groupings for sample, gene and impact terms, respectively
@@ -58,13 +57,13 @@ class Assembler:
         reduced_vep = vep[["CHROM", "POS", "CONTEXT_MUT", "GENE", "IMPACT"]]
         depths_merge_context_impact = reduced_vep.merge(depths, on=["CHROM", "POS"], how = "left")
         logger.debug("depths annotated")
+        self.mutabilities_per_site = reduced_vep.copy()
         del depths
         del reduced_vep
 
 
         # ** step 2: create depths attribute
         self.depths = depths_merge_context_impact
-
         self.genes = list(set(self.group.namespace('genes')) & set(self.depths['GENE'].unique()))
 
         logger.debug("Samples")
@@ -74,10 +73,9 @@ class Assembler:
         logger.debug("Impacts")
         logger.debug(self.group.namespace('impacts'))
 
-        # ** step 3: set up lookup table of lambdas
-        # dict with key = sample, gene, impact
-        self.lambdas = self._lambdas()
-        logger.debug("lambdas computed")
+        # ** step 3: compute mutability per site
+        self._lambdas()
+        logger.debug("mutabilities per site computed")
 
 
     def _get_region_contexts(self, gene):
@@ -86,7 +84,7 @@ class Assembler:
         return df['CONTEXT_MUT'].values
         
 
-    def _depths_per_gene(self):
+    def _depth_rescaling(self):
 
         # depths fold change relative to the mean depth per sample
         # used for mutability correction
@@ -98,14 +96,14 @@ class Assembler:
             samples = [c for c in self.mutability.columns if c not in ['GENE', 'CONTEXT_MUT']]
             for s in samples:
                 depths = np.nan_to_num(df[s].values.astype(np.float32))
-                res[(s, g)] = depths.astype(np.float32)
+                res[(s, g)] = depths.astype(np.float32) / depths.mean()
         return res
 
 
     def _mutability(self):
 
         res = {}
-        depths_dict = self._depths_per_gene()
+        rescaling_dict = self._depth_rescaling()
         samples = [c for c in self.mutability.columns if c not in ['GENE', 'CONTEXT_MUT']]
         
         for g in self.genes:
@@ -123,13 +121,18 @@ class Assembler:
                 # TODO
                 # revise if this .get(x, 0) is the right way of solving this
                 mutability_sample = np.array(list(map(lambda x: mutability_sample_dict.get(x, 0), region_contexts)))
-                absolute_mutability_vector = mutability_sample * depths_dict[(s, g)]
-                res[(s, g)] = absolute_mutability_vector.astype(np.float32)
+                fold_change = rescaling_dict[(s, g)]
+                mutability_vector = mutability_sample * fold_change
+                res[(s, g)] = mutability_vector.astype(np.float32)
 
         return res
 
-
     def _lambdas(self):
-        res = {}
         mutability_dict = self._mutability()
-        return mutability_dict
+        samples = list(self.group.namespace('samples'))
+
+        self.mutabilities_per_site[samples] = 0.
+        for g in self.genes:
+            for s in samples:
+                mutability = mutability_dict[(s, g)]
+                self.mutabilities_per_site.loc[self.mutabilities_per_site["GENE"] == g, s] = mutability
