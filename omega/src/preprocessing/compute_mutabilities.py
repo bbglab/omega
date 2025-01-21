@@ -681,7 +681,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                             ].reset_index(drop = True).groupby(by = 'GENE')[samples].sum()
         )
 
-        mutation_numbers_full_genes = mutation_numbers[mutation_numbers["GENE"] == mutation_numbers["GENE_BASE"]                                                       ]
+        mutation_numbers_full_genes = mutation_numbers[mutation_numbers["GENE"] == mutation_numbers["GENE_BASE"]]
         print(mutation_numbers_full_genes)
 
         mutation_numbers_gene_regions = mutation_numbers[mutation_numbers["GENE"] != mutation_numbers["GENE_BASE"]]
@@ -711,8 +711,11 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
 
         # Count how many synonymous mutations are there in each sample irrespective of the gene
-        syn_muts_per_sample = obs_muts_per_gene_impact_context_sample_wide[
-                                                            obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
+        # restrict to full genes only to avoid counting mutations more than once
+        full_genes_names = sorted(mutation_numbers_full_genes.index)
+        obs_muts_per_gene_impact_context_sample_wide_only_full_genes = obs_muts_per_gene_impact_context_sample_wide[obs_muts_per_gene_impact_context_sample_wide["GENE"].isin(full_genes_names)]
+        syn_muts_per_sample = obs_muts_per_gene_impact_context_sample_wide_only_full_genes[
+                                                            obs_muts_per_gene_impact_context_sample_wide_only_full_genes["IMPACT"] == "synonymous"
                                                         ].reset_index(drop = True)[samples].sum()
         syn_muts_per_sample_df = pd.DataFrame(syn_muts_per_sample).T
 
