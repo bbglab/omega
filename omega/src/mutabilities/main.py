@@ -17,7 +17,7 @@ logger = daiquiri.getLogger(__logger_name__ + '.mutabilities')
 warnings.filterwarnings(module='tensorflow*', action='ignore')
 
 
-def prepare_data(d):
+def mutabilities_per_site(d):
 
     mutability = pd.read_csv(d['mutability_file'], sep='\t')
     depths = pd.read_csv(d['depths_file'], sep='\t')
@@ -29,23 +29,14 @@ def prepare_data(d):
     group = Grouping()
     group.add_group('samples', os.path.join(d['grouping_folder'], 'group_samples.json'))
     group.add_group('genes', os.path.join(d['grouping_folder'], 'group_genes.json'))
-    group.add_group('impacts', os.path.join(d['grouping_folder'], 'group_impacts.json'))
 
     ground_control = Assembler(depths, vep, mutability, group)
-    print(ground_control)
-    return list(ground_control.input_generator())
-    
+    return ground_control.mutabilities_per_site
 
 def get_mutabilities(input_json: str, output_fn: str,  cores=4):
-    logger.info("Running in mle mode")
-
-    input_grid = prepare_data(input_json)
-    logger.info("Data prepared")
-
-    df = pd.DataFrame(input_grid)
-    df.to_csv(output_fn, sep='\t', index=False)
-
-
+    df_mutabilities = mutabilities_per_site(input_json)
+    df_mutabilities.to_csv(output_fn, header = True, index = False, sep = '\t')
+    logger.info("Mutabilities per site stored")
 
 def run_click( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores):
     

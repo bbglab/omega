@@ -70,8 +70,7 @@ class Assembler:
         logger.debug(self.group.namespace('samples'))
         logger.debug("Genes")
         logger.debug(self.genes)
-        logger.debug("Impacts")
-        logger.debug(self.group.namespace('impacts'))
+
 
         # ** step 3: compute mutability per site
         self._lambdas()
