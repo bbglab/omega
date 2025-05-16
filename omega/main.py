@@ -15,11 +15,11 @@ import daiquiri
 
 from omega import __logger_name__, __version__
 
-from omega.src.preprocessing.main import main as preprocessing_main
-from omega.src.estimator.main import run_click as estimator_main
-from omega.src.mutabilities.main import run_click as mutabilities_main
+from omega.src.preprocessing.main   import main as preprocessing_main
+from omega.src.estimator.main       import main as estimator_main
+from omega.src.mutabilities.main    import main as mutabilities_main
 
-from omega.src.globals import DATE, setup_logging_decorator, startup_message
+from omega.src.globals              import DATE, setup_logging_decorator, startup_message
 
 logger = daiquiri.getLogger(__logger_name__)
 

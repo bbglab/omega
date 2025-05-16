@@ -1,12 +1,8 @@
 import os
-import tqdm
 import daiquiri
 import warnings
 
 import pandas as pd
-
-# from enum import Enum
-from multiprocessing import Pool
 
 
 from omega import __logger_name__, __version__
@@ -38,7 +34,7 @@ def get_mutabilities(input_json: str, output_fn: str,  cores=4):
     df_mutabilities.to_csv(output_fn, header = True, index = False, sep = '\t')
     logger.info("Mutabilities per site stored")
 
-def run_click( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores):
+def main( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores):
     
     d = {'mutability_file': mutability_file,
             'depths_file': depths_file,
@@ -50,10 +46,3 @@ def run_click( mutability_file, depths_file, vep_annotation_file, grouping_folde
 
 
 
-if __name__ == "__main__":
-
-    """
-    python src/estimator/main.py --option bayes --cores 2 test/input_estimation.json test/output_estimation_bayes.tsv
-    python src/estimator/main.py --option mle --cores 2 test/input_estimation.json test/output_estimation_mle.tsv
-    """
-    run_click()
