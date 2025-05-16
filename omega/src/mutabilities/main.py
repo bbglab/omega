@@ -14,6 +14,13 @@ warnings.filterwarnings(module='tensorflow*', action='ignore')
 
 
 def mutabilities_per_site(d):
+    """
+    This function computes the mutabilities per site using the provided data files.
+    It reads the mutability, depths, and VEP annotation files,
+    and then creates a data grid
+    based on the grouping of samples, genes, and impacts.
+    The resulting data grid is returned as a DataFrame.
+    """
 
     mutability = pd.read_csv(d['mutability_file'], sep='\t')
     depths = pd.read_csv(d['depths_file'], sep='\t')
@@ -29,10 +36,6 @@ def mutabilities_per_site(d):
     ground_control = Assembler(depths, vep, mutability, group)
     return ground_control.mutabilities_per_site
 
-def get_mutabilities(input_json: str, output_fn: str,  cores=4):
-    df_mutabilities = mutabilities_per_site(input_json)
-    df_mutabilities.to_csv(output_fn, header = True, index = False, sep = '\t')
-    logger.info("Mutabilities per site stored")
 
 def main( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores):
     
@@ -42,7 +45,9 @@ def main( mutability_file, depths_file, vep_annotation_file, grouping_folder, ou
             'grouping_folder' : grouping_folder
             }
 
-    get_mutabilities(d, output_fn, cores= int(cores))
+    df_mutabilities = mutabilities_per_site(d)
+    df_mutabilities.to_csv(output_fn, header = True, index = False, sep = '\t')
+    logger.info("Mutabilities per site stored")
 
 
 
