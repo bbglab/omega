@@ -15,10 +15,11 @@ import daiquiri
 
 from omega import __logger_name__, __version__
 
-from omega.src.preprocessing.main import main as preprocessing_main
-from omega.src.estimator.main import run_click as estimator_main
+from omega.src.preprocessing.main   import main as preprocessing_main
+from omega.src.estimator.main       import main as estimator_main
+from omega.src.mutabilities.main    import main as mutabilities_main
 
-from omega.src.globals import DATE, setup_logging_decorator, startup_message
+from omega.src.globals              import DATE, setup_logging_decorator, startup_message
 
 logger = daiquiri.getLogger(__logger_name__)
 
@@ -31,7 +32,7 @@ def omega():
 
 
 @omega.command(context_settings=dict(help_option_names=['-h', '--help']),
-                help="Build datasets - Required once after installation.") 
+                help="Build input tables - Required once per cohort.")
 @click.option('--preprocessing-mode', type=click.Choice(['run_vep', 'postprocess_vep', 'compute_mutabilities']), help='Preprocessing mode')
 @click.option('--depths-file', type=click.Path(exists=True), help='Path to depths file')
 @click.option('--mutations-file', type=click.Path(exists=True), help='Path to mutations file')
@@ -64,7 +65,7 @@ def preprocessing(preprocessing_mode,
                     absent_synonymous,
                     synonymous_mutrates_file
             ):
-    """"Build datasets necessary to run Omega."""
+    """"Build tables necessary to run Omega."""
     startup_message(__version__, "Initializing preprocessing...")
 
     logger.info("Received arguments:")
@@ -127,6 +128,28 @@ def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotat
     logger.info(f"option: {option}")
     logger.info(f"cores: {cores}")
     estimator_main(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, dispersion, option, cores)
+
+
+@omega.command(context_settings=dict(help_option_names=['-h', '--help']),
+                        help="Run dNdS analysis.")
+@click.option('--mutability-file', type=click.Path(exists=True), help='Path to mutability file')
+@click.option('--depths-file', type=click.Path(exists=True), help='Path to depths file')
+@click.option('--vep-annotation-file', type=click.Path(exists=True), help='Path to VEP annotation file')
+@click.option('--grouping-folder', type=click.Path(exists=True), help='Path to grouping folder')
+@click.option('--output-fn', type=str, help='Output filename')
+@click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
+@setup_logging_decorator
+def mutabilities( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores):
+    startup_message(__version__, "Running estimator...")
+
+    logger.info("Received arguments:")
+    logger.info(f"mutability_file: {mutability_file}")
+    logger.info(f"depths_file: {depths_file}")
+    logger.info(f"vep_annotation_file: {vep_annotation_file}")
+    logger.info(f"grouping_folder: {grouping_folder}")
+    logger.info(f"output_fn: {output_fn}")
+    logger.info(f"cores: {cores}")
+    mutabilities_main(mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores)
 
 
 if __name__ == "__main__":

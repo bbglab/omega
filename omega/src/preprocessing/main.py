@@ -70,5 +70,3 @@ def main(preprocessing_mode,
                                         absent_synonymous, synonymous_mut_rates_file
                                     )
 
-if __name__ == '__main__':
-    main()

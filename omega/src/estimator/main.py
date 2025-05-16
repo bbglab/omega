@@ -5,7 +5,6 @@ import warnings
 
 import pandas as pd
 
-# from enum import Enum
 from multiprocessing import Pool
 
 
@@ -72,22 +71,7 @@ def mle(input_json: str, output_fn: str, dispersion : float, cores=4):
 
 
 
-# class ModelType(str, Enum):
-#     bayes = "bayes"
-#     mle = "mle"
-
-
-# def run(input_json: str, output_fn: str, option: ModelType=ModelType.bayes, cores=4):
-#     with open(input_json, 'rt') as f:
-#         d = json.load(f)
-
-#     if option == 'bayes':
-#         bayes(d, output_fn, cores=cores)
-#     if option == 'mle':
-#         mle(d, output_fn, cores=cores)
-
-
-def run_click(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn,
+def main(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn,
                     dispersion_value, 
                     option,
                     cores):
@@ -105,11 +89,3 @@ def run_click(observed_mutations_file, mutability_file, depths_file, vep_annotat
         mle(d, output_fn, dispersion_value, cores= int(cores))
 
 
-
-if __name__ == "__main__":
-
-    """
-    python src/estimator/main.py --option bayes --cores 2 test/input_estimation.json test/output_estimation_bayes.tsv
-    python src/estimator/main.py --option mle --cores 2 test/input_estimation.json test/output_estimation_mle.tsv
-    """
-    run_click()
