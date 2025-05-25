@@ -1,10 +1,6 @@
 
 import sys
 import pandas as pd
-import numpy as np
-
-
-from omega.src.preprocessing.utils import *
 
 # TODO
 # define the context and impact stores in a single place,

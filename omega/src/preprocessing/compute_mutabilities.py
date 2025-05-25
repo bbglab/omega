@@ -1,9 +1,8 @@
 import os
-import itertools
 import daiquiri
 import pandas as pd
 
-from omega.src.preprocessing.utils import *
+from omega.src.preprocessing.utils import vartype
 
 from omega import __logger_name__, __version__
 logger = daiquiri.getLogger(__logger_name__ + '.preprocessing.comp_mutabs')

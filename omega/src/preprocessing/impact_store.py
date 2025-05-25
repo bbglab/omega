@@ -1,8 +1,6 @@
 GROUPING_DICT = {
 
     'transcript_ablation': 'nonsense',
-    'splice_acceptor_variant': 'nonsense',
-    'splice_donor_variant': 'nonsense',
     'stop_gained': 'nonsense',
     'frameshift_variant': 'nonsense',
     'stop_lost': 'nonsense',

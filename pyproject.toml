@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "Omega"
+dynamic = ["version"]
+description = "Omega is a dN/dS-based method designed to analyse patterns of somatic mutations across samples to detect genes that are under positive selection."
+authors = [
+    { name = "BBGLab (Barcelona Biomedical Genomics Lab)", email = "bbglab@irbbarcelona.org" },    
+    { name = "Ferriol Calvet", email = "ferriol.calvet@irbbarcelona.org"},
+    { name = "Ferran Muiños", email = "ferran.muinos@irbbarcelona.org"}
+]
+
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "GNU Affero General Public License v3 or later (AGPLv3+)"}
+keywords = ["bioinformatics", "positiveselection", "driversprediction", "bbglab"]
+dependencies = [
+    "bgreference==0.7",
+    "bgdata==2.0.4",
+    "click==8.1.7",
+    "daiquiri==3.2.5.1",
+    "numpy==1.26.4",
+    "pandas==2.2.0",
+    "tensorflow==2.16.2",
+    "tensorflow_probability==0.23.0",
+    "tqdm==4.66.1",
+    "scipy==1.14.1",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/bbglab/omega"
+# Documentation = "https://omega.readthedocs.io/"
+Repository = "https://github.com/bbglab/omega"
+Issues = "https://github.com/bbglab/omega/issues"
+
+
+[project.scripts]
+"omega" = "omega.main:omega"
+
+[project.optional-dependencies]
+linting = [
+    "ruff>=0.8.3",
+]
+
+[tool.hatch.version]
+path = "omega/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["omega"]
+
+[tool.uv]
+package = true
+
+[tool.ruff.lint]
+select = ["F"]
+ignore = ["F401"]
+
+[tool.ruff]
+line-length = 127
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+docstring-code-format = true
