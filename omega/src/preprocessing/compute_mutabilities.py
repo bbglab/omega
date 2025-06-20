@@ -311,10 +311,14 @@ def compute_sample_gene_specific_differences(all_possible_sites_annotated, depth
                                                 mut_probability,
                                                 samples, single_sample = False):
     """
+    Here we compute this: 
+        (depth * (sample_mut_profile/all_samples_mut_profile) )
+
     Required information:
             All possible sites in the panel regions
             Depth per site per sample
-            mutational profile
+            Mutational profile of the cohort in which the global mutation rates were computed
+            Mutational profile of the sample or samples used here
     Output:
         context corrected depth per trinucleotide per gene
             (corrected by differences in the mutational profile of the sample and the cohort)
@@ -608,7 +612,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         logger.info("Global mutational profile loaded")
 
         #######
-        ## the following lines follow this correction strategy
+        ## the following lines follow this correction strategy applied for each gene
         #######
         # syn_mutrate * (depth * (sample_mut_profile/all_samples_mut_profile) )
         #######
@@ -633,16 +637,14 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         gene_mutation_rates = pd.DataFrame(gene_mutation_rates).reset_index()
         gene_mutation_rates.columns = ["GENE", "MUTRATE"]
         gene_mutation_rates = gene_mutation_rates.set_index('GENE')
-        print(gene_mutation_rates)
-
-
-        ## FIXME
-        # revise if this should be changed and mutrates should be provided without normalization
 
         # remove the per MB correction
         gene_mutation_rates = gene_mutation_rates / 1e6
+        logger.debug(gene_mutation_rates)
 
-        # this term is computed here
+        ## FIXME: revise if this should be changed and mutrates should be provided without scaling to Mb
+
+        # this term is computed below starting now.
         # (depth * (sample_mut_profile/all_samples_mut_profile) )
         # we get a value per gene
         sample_specific_biases = compute_sample_gene_specific_differences(all_possible_sites_annotated,
@@ -650,39 +652,57 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                                             mut_probability_global,
                                                                             mut_probability,                                                
                                                                             samples)
-        logger.info("Sample specific biases computed based on mutational profile and sequencing depth")
-
-        print(sample_specific_biases)
         sample_columnsss = [x for x in sample_specific_biases.columns]
         sample_specific_biases = sample_specific_biases.reset_index()
+
+        logger.info("Sample specific biases computed based on mutational profile and sequencing depth")
+        logger.info(sample_specific_biases)
 
         # Extract the gene name before the -- (used as separator) for subgene-level data
         sample_specific_biases['GENE_BASE'] = sample_specific_biases['GENE'].str.split('--').str[0]
 
-        mutrate_columnn = ['MUTRATE']
+        # Add info from the synoymous mutation rates defined for each gene 
         weighted_depth_n_mutrate = sample_specific_biases.merge(gene_mutation_rates,
                                                                 left_on='GENE_BASE',
                                                                 right_on='GENE',
                                                                 how = 'left'
                                                                 ).fillna(0)
-        print(weighted_depth_n_mutrate)
-        weighted_depth_n_mutrate_ind = weighted_depth_n_mutrate[["GENE"] + sample_columnsss + mutrate_columnn].set_index("GENE")
+        weighted_depth_n_mutrate_ind = weighted_depth_n_mutrate[["GENE", 'MUTRATE'] + sample_columnsss].set_index("GENE")
+        
+        # compute mutation_rate * corrected_depth product
         mutation_numbers = (weighted_depth_n_mutrate_ind.iloc[:,0] * weighted_depth_n_mutrate_ind.iloc[:,1]).reset_index()
         mutation_numbers.columns = ["GENE", "mutations"]
         mutation_numbers = mutation_numbers.merge(weighted_depth_n_mutrate[["GENE", "GENE_BASE"]],
                                                     on = "GENE",
                                                     how = 'left')
-        print("computed synonymous mutation numbers from global mutrate")
-        print(mutation_numbers)
+        logger.debug("computed synonymous mutation numbers from global mutrate.")
+        logger.debug("This is a potential output of the number of synonymous mutations per gene-sample")
+        logger.debug(mutation_numbers)
+        # mutation_numbers 
+        # is a potential output number of mutations per gene per sample
+        # using the global synonymous mutation rates
 
-        print(obs_muts_per_gene_impact_context_sample_wide[
+
+        logger.debug("[not used] real observed synonymous mutations per gene")
+        logger.debug(obs_muts_per_gene_impact_context_sample_wide[
                                                                 obs_muts_per_gene_impact_context_sample_wide["IMPACT"] == "synonymous"
                                                             ].reset_index(drop = True).groupby(by = 'GENE')[samples].sum()
         )
 
-        mutation_numbers_full_genes = mutation_numbers[mutation_numbers["GENE"] == mutation_numbers["GENE_BASE"]]
-        print(mutation_numbers_full_genes)
 
+        #####
+        ## Alternative option
+        ##   keep the total number of observed synonymous mutations constant
+        ##   and redistribute them between genes according to the recomputed probabilities
+        #####
+        mutation_numbers_full_genes = mutation_numbers[mutation_numbers["GENE"] == mutation_numbers["GENE_BASE"]]
+        logger.debug("computed synonymous mutations per full gene from global mutrates")
+        logger.debug(mutation_numbers_full_genes)
+
+
+        # Handle the subgenic elements
+        # total number of mutations comes only from full genes
+        # these are just portions of the bigger ones and need to be handled differently
         mutation_numbers_gene_regions = mutation_numbers[mutation_numbers["GENE"] != mutation_numbers["GENE_BASE"]]
         mutation_numbers_gene_regions_with_gene_info = mutation_numbers_gene_regions.merge(mutation_numbers_full_genes[["GENE_BASE", "mutations"]],
                                                                                            on = 'GENE_BASE',
@@ -692,20 +712,20 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                             ["GENE", "GENE_BASE",
                                                              "mutations_regions", "mutations_full"]
                                                              ]
+
+        # compute proportion of mutations seen in subgenic element
+        # to be able to normalize the new total with this value
         mutation_numbers_gene_regions_with_gene_info["proportion"] = (mutation_numbers_gene_regions_with_gene_info["mutations_regions"] \
                                                                         / mutation_numbers_gene_regions_with_gene_info["mutations_full"]).fillna(0)
         mutation_numbers_gene_regions_with_gene_info = mutation_numbers_gene_regions_with_gene_info[["GENE", "GENE_BASE","proportion"]]
-        print(mutation_numbers_gene_regions_with_gene_info)
-
+        # logger.debug("number of mutations")
+        # logger.debug(mutation_numbers_gene_regions_with_gene_info)
 
         mutation_numbers_full_genes = mutation_numbers_full_genes.drop("GENE_BASE",
                                                                        axis='columns').set_index("GENE")
-        # mutation_numbers 
-        # is a potential output number of mutations per gene per sample
-        # using the global synonymous mutation rates
 
-        # the alternative option is to use the counts from mutation_numbers
-        # to redistribute the observed number of synonymous mutations observed in that sample
+
+        # convert the total number of mutations "predicted" for each gene-sample to a relative value
         relative_syn_muts_per_gene_allsamples = mutation_numbers_full_genes / mutation_numbers_full_genes.sum()
 
 
@@ -718,32 +738,38 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                         ].reset_index(drop = True)[samples].sum()
         syn_muts_per_sample_df = pd.DataFrame(syn_muts_per_sample).T
 
-
+        # FIXME : this multiplication should have some more safety measures
         # Multiply the two "vectors" to get a value of synonymous mutations per sample per gene
         result_array = relative_syn_muts_per_gene_allsamples.values * syn_muts_per_sample_df.values
+
 
         # put the right names to the rows and columns
         obs_syn_muts_per_gene_sample = pd.DataFrame(result_array,
                                                             columns= syn_muts_per_sample_df.columns,
                                                             index=relative_syn_muts_per_gene_allsamples.index)
         obs_syn_muts_per_gene_sample = obs_syn_muts_per_gene_sample.reset_index()
-        print("computed synonymous mutation numbers after normalizing")
-        print(obs_syn_muts_per_gene_sample)
+        logger.debug("computed synonymous mutation numbers per gene after normalizing")
+        logger.debug(obs_syn_muts_per_gene_sample)
 
+
+        # get the numbers including the subgenic regions
         mutation_numbers_gene_regions_with_gene_info_final_numbers = mutation_numbers_gene_regions_with_gene_info.merge(obs_syn_muts_per_gene_sample,
                                                                                                                         left_on = 'GENE_BASE',
                                                                                                                         right_on = 'GENE',                                                                                                                        
                                                                                                                         how = 'left',
                                                                                                                         suffixes = ("", "_gene")
                                                                                                                         )
-        print(mutation_numbers_gene_regions_with_gene_info_final_numbers)
+
+        # get the numbers of synoymous mutations for the subgenic areas
         mutation_numbers_gene_regions_with_gene_info_final_numbers[samples[0]] = mutation_numbers_gene_regions_with_gene_info_final_numbers[samples[0]] \
                                                                                 * mutation_numbers_gene_regions_with_gene_info_final_numbers["proportion"]
-        print(mutation_numbers_gene_regions_with_gene_info_final_numbers)
+        logger.debug("computed synonymous mutation numbers per subgenic region after normalizing")
+        logger.debug(mutation_numbers_gene_regions_with_gene_info_final_numbers)
+
+        # concat gene and sub-genic level metrics
         obs_syn_muts_per_gene_sample = pd.concat((obs_syn_muts_per_gene_sample,
                                                   mutation_numbers_gene_regions_with_gene_info_final_numbers[["GENE"] + samples])
                                                   ).reset_index(drop = True)
-        print(obs_syn_muts_per_gene_sample)
         logger.debug("Synonynmous computed from the total number of observed synonymous and distributed according to the relative counts in the custom file provided.")
         # print('CV', obs_syn_muts_per_gene_sample)
 
@@ -771,9 +797,11 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                 sep = "\t")
         logger.debug(f"Synonymous mutations used stored into: {syn_muts_table}")
 
+
     obs_muts_per_gene_context_sample = obs_muts_per_gene_impact_context_sample_wide.reset_index(drop = True)
     obs_muts_per_gene_sample = obs_muts_per_gene_context_sample.groupby(by = ["GENE"])[samples].sum()
     obs_muts_per_gene_sample = obs_muts_per_gene_sample.reset_index()
+
 
 
     #####
@@ -811,41 +839,4 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                         header = True,
                                         index = False,
                                         sep = "\t")
-
-
-
-
-
-
-# if __name__ == '__main__':
-
-#     ## Input
-#     input_path = "/home/fcalvet/Documents/dev/omega/test/test_syn_muts_estimation_hotspot"
-#     depth_dataframe_file = f"{input_path}"
-#     mutations_file = f"{input_path}"
-#     all_possible_sites_annotated_file = f"{input_path}/consensus.exons_splice_sites.with_hotspots.tsv"
-    
-#     mutation_rates_file = f"{input_path}/mutation_rates_per_gene.tsv
-#     = f"{input_path}/
-#     = f"{input_path}/
-#     = f"{input_path}/
-#     = f"{input_path}/
-#     ## Output
-#     table_muts_x_sample_gene_impact_context = "./test/preprocessing/mutations_per_sample_gene_impact_context.count.tsv"
-#     mutabilities_table = "./test/preprocessing/mutability_per_sample_gene_context.tsv"
-
-
-#     compute_mutabilities_wrapper(all_possible_sites_annotated_file,
-#                                     depth_dataframe_file,
-#                                     mutations_file,
-#                                     "out_table_muts_x_sample_gene_impact_context",
-#                                     "out_mutability_table",
-#                                     "out_syn_muts_table",
-#                                     mut_profile = None,
-#                                     mut_profile_global = None,
-#                                     single_sample = None,
-#                                     absent_synonymous = 'ignore',
-#                                     gene_mutation_rates_file = None
-#                                     )
-
 
