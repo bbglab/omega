@@ -76,7 +76,7 @@ def dichotomous_search(point_estimate, func, bound, step=5, tol=1e-3):
     return lower_limit, upper_limit
 
     
-@tf.function(autograph=False, experimental_compile=True)
+@tf.function(autograph=False, jit_compile=True)
 def sampler(num_results, num_burnin_steps, log_prob_func):
     
     hmc = tfp.mcmc.HamiltonianMonteCarlo(
