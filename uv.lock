@@ -622,11 +622,14 @@ dependencies = [
     { name = "bgreference" },
     { name = "click" },
     { name = "daiquiri" },
+    { name = "keras" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "scipy" },
     { name = "tensorflow" },
+    { name = "tensorflow-keras" },
     { name = "tensorflow-probability" },
+    { name = "tf-keras" },
     { name = "tqdm" },
 ]
 
@@ -641,12 +644,15 @@ requires-dist = [
     { name = "bgreference", specifier = "==0.7" },
     { name = "click", specifier = "==8.1.7" },
     { name = "daiquiri", specifier = "==3.2.5.1" },
+    { name = "keras", specifier = ">=3.10.0" },
     { name = "numpy", specifier = "==1.26.4" },
     { name = "pandas", specifier = "==2.2.0" },
     { name = "ruff", marker = "extra == 'linting'", specifier = ">=0.8.3" },
     { name = "scipy", specifier = "==1.14.1" },
     { name = "tensorflow", specifier = "==2.16.2" },
-    { name = "tensorflow-probability", specifier = "==0.23.0" },
+    { name = "tensorflow-keras", specifier = ">=0.1" },
+    { name = "tensorflow-probability", specifier = "==0.24.0" },
+    { name = "tf-keras", specifier = ">=2.16.0" },
     { name = "tqdm", specifier = "==4.66.1" },
 ]
 provides-extras = ["linting"]
@@ -1068,8 +1074,17 @@ wheels = [
 ]
 
 [[package]]
+name = "tensorflow-keras"
+version = "0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/e8/0f5b94acf8cb70dfe90efb8fb21026684bcccec9e46d3489f83112784dc0/tensorflow_keras-0.1.tar.gz", hash = "sha256:b385c253f07266a8c6a5027a1e98550ab68fd6d1ccd1a1ff438ae3fa37c110c0", size = 4710, upload-time = "2025-01-19T19:13:18.745Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a8/f2/3390ee50e5bc4a764c51f960d99856e6c795e2945cf611cb1216254ab605/tensorflow_keras-0.1-py3-none-any.whl", hash = "sha256:f3070428c41638aaf5a97b7531908dcc35648d129b7cf9fb5f1cebd6957dd8fb", size = 5156, upload-time = "2025-01-19T19:13:16.889Z" },
+]
+
+[[package]]
 name = "tensorflow-probability"
-version = "0.23.0"
+version = "0.24.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "absl-py" },
@@ -1082,7 +1097,7 @@ dependencies = [
     { name = "six" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/90/4e8c686f2e691f48e40e16a539c61a6e9880743733d8c4dc3f275d12268e/tensorflow_probability-0.23.0-py2.py3-none-any.whl", hash = "sha256:dda5cacfe50cb19ecd96f3ce81e6ff8680d84213bcfe94ca0aaf6e5f51c88061", size = 6915575, upload-time = "2023-11-20T23:21:06.624Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/c9/93e9e34703269d5ec3f6a8f49f6748df8737fede8bb1f34165f6ef3d861b/tensorflow_probability-0.24.0-py2.py3-none-any.whl", hash = "sha256:8c1774683e38359dbcaf3697e79b7e6a4e69b9c7b3679e78ee18f43e59e5759b", size = 6937874, upload-time = "2024-03-12T19:43:39.214Z" },
 ]
 
 [[package]]
@@ -1092,6 +1107,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ca/6c/3d75c196ac07ac8749600b60b03f4f6094d54e132c4d94ebac6ee0e0add0/termcolor-3.1.0.tar.gz", hash = "sha256:6a6dd7fbee581909eeec6a756cff1d7f7c376063b14e4a298dc4980309e55970", size = 14324, upload-time = "2025-04-30T11:37:53.791Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4f/bd/de8d508070629b6d84a30d01d57e4a65c69aa7f5abe7560b8fad3b50ea59/termcolor-3.1.0-py3-none-any.whl", hash = "sha256:591dd26b5c2ce03b9e43f391264626557873ce1d379019786f99b0c2bee140aa", size = 7684, upload-time = "2025-04-30T11:37:52.382Z" },
+]
+
+[[package]]
+name = "tf-keras"
+version = "2.16.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tensorflow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7c/63/59a4aee62ea8999850e4b3b5d94b60fe280ca93de60d0e2958066e24d6a7/tf_keras-2.16.0.tar.gz", hash = "sha256:db53891f1ac98197c2acced98cdca8c06ba8255655a6cb7eb95ed49676118280", size = 1259784, upload-time = "2024-03-09T02:28:18.742Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/75/aa/cf09f8956d4f276f655b13674e15d8d6015fd832f9689aa9ff2a515781ab/tf_keras-2.16.0-py3-none-any.whl", hash = "sha256:b2ad0541fa7d9e92c4b7a1b96593377afb58aaff374299a6ca6be1a42f51d899", size = 1724695, upload-time = "2024-03-09T02:28:15.99Z" },
 ]
 
 [[package]]
