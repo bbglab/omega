@@ -59,9 +59,10 @@ omega preprocessing --preprocessing-mode compute_mutabilities \
 ```
 
 where `all_samples.syn_mutrate.tsv` contains at least these two columns:
+MUTDENSITY should be the number of mutations per Mb sequenced of the entire cohort that is being analyzed.
 
 ```console
-GENE    MUTRATE
+GENE    MUTDENSITY
 ARID1A  0.5
 CDKN1A  0.45
 CREBBP  0.65

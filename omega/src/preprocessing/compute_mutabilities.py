@@ -622,7 +622,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
         # Read mutation rates per MB
         gene_mutation_rates = pd.read_table(gene_mutation_rates_file)
-        gene_mutation_rates = gene_mutation_rates.set_index('GENE')["MUTRATE"]
+        gene_mutation_rates = gene_mutation_rates.set_index('GENE')["MUTDENSITY"]
         logger.info("Gene mutation rates loaded")
 
         if len(gene_mutation_rates[gene_mutation_rates == 0]) > 0:
@@ -635,7 +635,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
             # print(gene_mutation_rates)
 
         gene_mutation_rates = pd.DataFrame(gene_mutation_rates).reset_index()
-        gene_mutation_rates.columns = ["GENE", "MUTRATE"]
+        gene_mutation_rates.columns = ["GENE", "MUTDENSITY"]
         gene_mutation_rates = gene_mutation_rates.set_index('GENE')
 
         # remove the per MB correction
@@ -667,7 +667,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                                 right_on='GENE',
                                                                 how = 'left'
                                                                 ).fillna(0)
-        weighted_depth_n_mutrate_ind = weighted_depth_n_mutrate[["GENE", 'MUTRATE'] + sample_columnsss].set_index("GENE")
+        weighted_depth_n_mutrate_ind = weighted_depth_n_mutrate[["GENE", 'MUTDENSITY'] + sample_columnsss].set_index("GENE")
         
         # compute mutation_rate * corrected_depth product
         mutation_numbers = (weighted_depth_n_mutrate_ind.iloc[:,0] * weighted_depth_n_mutrate_ind.iloc[:,1]).reset_index()
