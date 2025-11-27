@@ -9,7 +9,7 @@ from omega.src.preprocessing.utils import vartype
 
 logger = daiquiri.getLogger(__logger_name__ + '.preprocessing.comp_mutabs')
 
-contexts_formatted = canonical_channels()
+CHANNELS = canonical_channels()
 
 def read_inputs(all_possible_sites_annotated_file, depth_dataframe_file, mutations_file):
     """
@@ -551,8 +551,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         obs_muts_per_gene_impact_context_sample_wide.columns = ["GENE", "IMPACT", "CONTEXT_MUT"] + samples
         logger.debug("Mutations table compressed for single sample")
 
-    ## TODO
-    ## We could try to do something similar with the depths
+    ## TODO: We could try to do something similar with the depths
     # if single_sample:
     #     depth_dataframe
     #     obs_muts_per_gene_impact_context_sample_wide = obs_muts_per_gene_impact_context_sample_wide_indexed.sum(axis = 1).reset_index()
@@ -598,8 +597,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
 
     if absent_synonymous == 'infer_global_custom':
-        ## FIXME
-        # this will keep the original samples' name, even multiple columns if single sample is not activated
+        ## FIXME: this will keep the original samples' name, even multiple columns if single sample is not activated
         mut_probability_global = adapt_mutational_profile(mut_profile_global)
 
         # this might not work if there are more than one column            
