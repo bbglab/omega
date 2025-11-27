@@ -1,40 +1,38 @@
+import multiprocessing
 import os
-import tqdm
-import daiquiri
 import warnings
+from functools import partial
 
+import daiquiri
 import pandas as pd
+import tqdm
 
-from multiprocessing import Pool
+from omega import __logger_name__
+from omega.src.assemble import Assembler, Grouping
+from omega.src.estimator.omega import mle_infer
 
-
-from omega import __logger_name__, __version__
-from omega.src.estimator.assemble import Grouping, Assembler
-from omega.src.estimator.omega import bayes_infer, mle_infer
-
-logger = daiquiri.getLogger(__logger_name__ + '.estimator')
+LOG = daiquiri.getLogger(__logger_name__ + '.estimator')
 
 warnings.filterwarnings(module='tensorflow*', action='ignore')
 
 
 def prepare_data(d):
-
     mut_counts = pd.read_csv(d['observed_mutations_file'], sep='\t')
     mutability = pd.read_csv(d['mutability_file'], sep='\t')
     depths = pd.read_csv(d['depths_file'], sep='\t')
     vep = pd.read_csv(d['vep_annotation_file'], sep='\t')
 
     # group collects the grouping of samples, genes and impacts
-    # the group instance will be passed to the Assembler so that 
+    # the group instance will be passed to the Assembler so that
     # it can create a data grid in accordance with the grouping
     group = Grouping()
     group.add_group('samples', os.path.join(d['grouping_folder'], 'group_samples.json'))
     group.add_group('genes', os.path.join(d['grouping_folder'], 'group_genes.json'))
     group.add_group('impacts', os.path.join(d['grouping_folder'], 'group_impacts.json'))
 
-    ground_control = Assembler(depths, vep, mut_counts, mutability, group)
+    ground_control = Assembler(depths, vep, mutability, group, mut_counts, mode='estimator')
     return list(ground_control.input_generator())
-    
+
 
 def bayes(input_json, output_fn, cores=4):
     logger.info("Running in bayes mode")

@@ -5,7 +5,7 @@ import pandas as pd
 # TODO
 # define the context and impact stores in a single place,
 # not two different files
-from omega.src.preprocessing.context_store import transform_context
+from omega.src.utils import transform_context
 from omega.src.preprocessing.impact_store import GROUPING_DICT, consequence_rank_dict, most_deleterious
 
 

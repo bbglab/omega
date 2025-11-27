@@ -1,19 +1,20 @@
-import os
+"""Global utilities for Omega."""
 import logging
-import daiquiri
-import click
+import os
 import subprocess
 from datetime import datetime
-
 from functools import wraps
+
+import click
+import daiquiri
+from daiquiri.formatter import ColorFormatter
 
 from omega import __logger_name__
 
-
 logger = daiquiri.getLogger(__logger_name__)
 
-DATE = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-FORMAT = "%(asctime)s - %(color)s%(levelname)-7s%(color_stop)s | %(name)s - %(color)s%(message)s%(color_stop)s"
+DATE = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+FORMAT = '%(asctime)s - %(color)s%(levelname)-7s%(color_stop)s | %(name)s - %(color)s%(message)s%(color_stop)s'
 
 
 # =========
@@ -49,22 +50,21 @@ def setup_logging_decorator(func):
 
 
 def startup_message(version, initializing_text):
-    
-    author = "Biomedical Genomics Lab - IRB Barcelona"
-    support_email = "ferriol.calvet@irbbarcelona.org and ferran.muinos@irbbarcelona.org"
+    author = 'Ferriol Calvet & Ferran Muiños @ BBGLab'
+    support_email = 'bbglab@irbbarcelona.org'
     banner_width = 70
 
-    logger.info("#" * banner_width)
-    logger.info(f"{'#' + ' ' * (banner_width - 2) + '#'}")
-    logger.info(f"{'#' + 'Welcome to omega!'.center(banner_width - 2) + '#'}")
-    logger.info(f"{'#' + ' ' * (banner_width - 2) + '#'}")
-    logger.info(f"{'#' + initializing_text.center(banner_width - 2) + '#'}")
-    logger.info(f"{'#' + f'Version: {version}'.center(banner_width - 2) + '#'}")
-    logger.info(f"{'#' + f'Author: {author}'.center(banner_width - 2) + '#'}")
-    logger.info(f"{'#' + f'Support: {support_email}'.center(banner_width - 2) + '#'}")
-    logger.info(f"{'#' + ' ' * (banner_width - 2) + '#'}")
-    logger.info("#" * banner_width)
-    logger.info("")
+    logger.info('#' * banner_width)
+    logger.info(f'{"#" + " " * (banner_width - 2) + "#"}')
+    logger.info(f'{"#" + "Welcome to omega!".center(banner_width - 2) + "#"}')
+    logger.info(f'{"#" + " " * (banner_width - 2) + "#"}')
+    logger.info(f'{"#" + initializing_text.center(banner_width - 2) + "#"}')
+    logger.info(f'{"#" + f"Version: {version}".center(banner_width - 2) + "#"}')
+    logger.info(f'{"#" + f"Author: {author}".center(banner_width - 2) + "#"}')
+    logger.info(f'{"#" + f"Support: {support_email}".center(banner_width - 2) + "#"}')
+    logger.info(f'{"#" + " " * (banner_width - 2) + "#"}')
+    logger.info('#' * banner_width)
+    logger.info('')
 
 
 # =========

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-""" 
+"""
 
 # =============
 # EXAMPLE USAGE
@@ -14,12 +14,12 @@ import click
 import daiquiri
 
 from omega import __logger_name__, __version__
-
+from omega.src.helpers import display_title_and_params
 from omega.src.preprocessing.main   import main as preprocessing_main
 from omega.src.estimator.main       import main as estimator_main
 from omega.src.mutabilities.main    import main as mutabilities_main
 
-from omega.src.globals              import DATE, setup_logging_decorator, startup_message
+from omega.src.globals              import setup_logging_decorator, startup_message
 
 logger = daiquiri.getLogger(__logger_name__)
 
@@ -31,8 +31,8 @@ def omega():
     pass
 
 
-@omega.command(context_settings=dict(help_option_names=['-h', '--help']),
-                help="Build input tables - Required once per cohort.")
+@omega.command(context_settings=dict(help_option_names=['-h', '--help'], show_default=True),
+                help="Build input tables - Required once per cohort.", )
 @click.option('--preprocessing-mode', type=click.Choice(['run_vep', 'postprocess_vep', 'compute_mutabilities']), help='Preprocessing mode')
 @click.option('--depths-file', type=click.Path(exists=True), help='Path to depths file')
 @click.option('--mutations-file', type=click.Path(exists=True), help='Path to mutations file')
@@ -66,26 +66,9 @@ def preprocessing(preprocessing_mode,
                     synonymous_mutrates_file
             ):
     """"Build tables necessary to run Omega."""
-    startup_message(__version__, "Initializing preprocessing...")
+    startup_message(__version__, "mode: PREPROCESSING")
 
-    logger.info("Received arguments:")
-    logger.info(f"preprocessing_mode: {preprocessing_mode}")
-    logger.info(f"bed_regions_file: {bed_regions_file}")
-    logger.info(f"vep_input_generated: {vep_input_generated}")
-    logger.info(f"vep_output_file: {vep_output_file}")
-    logger.info(f"vep_postprocessed_file: {vep_postprocessed_file}")
-    logger.info(f"input_vep_postprocessed_file: {input_vep_postprocessed_file}")
-    logger.info(f"depths_file: {depths_file}")
-    logger.info(f"mutations_file: {mutations_file}")
-    logger.info(f"table_observed_muts: {table_observed_muts}")
-    logger.info(f"mutabilities_table: {mutabilities_table}")
-    logger.info(f"syn_muts_table: {synonymous_muts_table}")
-    logger.info(f"mutational_profile: {mutational_profile_file}")
-    logger.info(f"mutational_profile global: {mutational_profile_global_file}")
-    logger.info(f"genome_assembly: {genome_assembly}")
-    logger.info(f"single_sample: {single_sample}")
-    logger.info(f"absent_synonymous: {absent_synonymous}")
-    logger.info(f"relative_synonymous_muts_file: {synonymous_mutrates_file}")
+    display_title_and_params(title="Initializing preprocessing...")
 
     preprocessing_main(preprocessing_mode,
                         bed_regions_file, vep_input_generated,
@@ -115,18 +98,10 @@ def preprocessing(preprocessing_mode,
 @click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
 @setup_logging_decorator
 def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, dispersion, option, cores):
-    startup_message(__version__, "Running estimator...")
+    startup_message(__version__, "mode: ESTIMATOR")
 
-    logger.info("Received arguments:")
-    logger.info(f"observed_mutations_file: {observed_mutations_file}")
-    logger.info(f"mutability_file: {mutability_file}")
-    logger.info(f"depths_file: {depths_file}")
-    logger.info(f"vep_annotation_file: {vep_annotation_file}")
-    logger.info(f"grouping_folder: {grouping_folder}")
-    logger.info(f"output_fn: {output_fn}")
-    logger.info(f"dispersion: {dispersion}")
-    logger.info(f"option: {option}")
-    logger.info(f"cores: {cores}")
+    display_title_and_params(title="Running estimator...")
+
     estimator_main(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, dispersion, option, cores)
 
 
@@ -140,17 +115,13 @@ def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotat
 @click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
 @setup_logging_decorator
 def mutabilities( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores):
-    startup_message(__version__, "Running estimator...")
+    # FIXME this function computes mutabilities per site, not dNdS
+    startup_message(__version__, "mode: MUTABILITIES")
 
-    logger.info("Received arguments:")
-    logger.info(f"mutability_file: {mutability_file}")
-    logger.info(f"depths_file: {depths_file}")
-    logger.info(f"vep_annotation_file: {vep_annotation_file}")
-    logger.info(f"grouping_folder: {grouping_folder}")
-    logger.info(f"output_fn: {output_fn}")
-    logger.info(f"cores: {cores}")
+    display_title_and_params(title="Computing mutabilities per site...")
+
     mutabilities_main(mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores)
 
 
 if __name__ == "__main__":
-    omega() 
+    omega()
