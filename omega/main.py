@@ -115,7 +115,7 @@ def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotat
 @click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
 @setup_logging_decorator
 def mutabilities( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores):
-    # FIXME this function computes mutabilities per site, not dNdS
+    """Compute mutabilities per site."""
     startup_message(__version__, "mode: MUTABILITIES")
 
     display_title_and_params(title="Computing mutabilities per site...")

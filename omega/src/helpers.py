@@ -19,8 +19,6 @@ def display_title_and_params(ctx: click.Context = None, title: str = 'Omega') ->
     ----------
     title : str
         The title text to be displayed.
-    verbose : bool
-        Flag to indicate if click parameters should be printed.
     """
     LOG.info('=== %s ===', title)
 

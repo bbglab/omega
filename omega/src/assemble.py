@@ -9,6 +9,8 @@ import daiquiri
 import numpy as np
 import pandas as pd
 
+import tensorflow as tf
+
 from omega import __logger_name__
 from omega.src.utils import canonical_channels
 
@@ -108,7 +110,7 @@ class Assembler:
 
         # ** step 3: set up lookup table of lambdas
         # dict with key = sample, gene, impact
-        self.lambdas: dict[str, str] = self.compute_lambdas(mode)
+        self.lambdas: dict = self.compute_lambdas(mode)
 
         # ** step 4 - only estimator mode: set up the lookup table of response counts
         # dict with key = sample, gene, impact
@@ -133,7 +135,7 @@ class Assembler:
         return depths_merge_context_impact
 
     def _get_region_contexts(self, gene):
-        df: pd.DataFrame = self.depths[self.depths['GENE'] == gene].copy()
+        df: pd.DataFrame = self.depths[self.depths['GENE'] == gene]
         return df['CONTEXT_MUT'].values
 
     def _depth_rescaling(self):
@@ -246,7 +248,6 @@ class Assembler:
         return res
 
     def input_data(self, sample_set, gene_set, impact_set):
-        import tensorflow as tf
         try:
             counts_tensors = [
                 tf.convert_to_tensor(v, dtype=tf.float32)

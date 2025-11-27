@@ -11,7 +11,7 @@ logger = daiquiri.getLogger(__logger_name__ + '.estimator.omega')
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_DETERMINISTIC_OPS'] = 'true'
-os.environ['TF_CUDNN_DETERMINISTIC']=f'{SEED}'
+os.environ['TF_CUDNN_DETERMINISTIC']= '1'
 
 def get_reparameterized_negative_binomial(mean, overdispersion):
     """

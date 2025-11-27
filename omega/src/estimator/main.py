@@ -78,7 +78,7 @@ def mle(input_json: dict[str, str], output_fn: str, dispersion: float, cores=4):
             res = {k: res.get(k, []) + d.get(k, []) for k in d}
 
     else:
-        worker_fn = partial(mle_infer, dispersion=dispersion)  # type: ignore[name-defined]
+        worker_fn = partial(mle_infer, dispersion=dispersion)
         ctx = multiprocessing.get_context('spawn')
         with ctx.Pool(processes=cores, initializer=_init_worker) as p:
             for d in tqdm.tqdm(p.imap(worker_fn, input_grid), total=len(input_grid)):

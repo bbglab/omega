@@ -33,7 +33,7 @@ def transform_context(chr_: str, pos: int, mut: str, assembly: str = "hg38") -> 
     _ref, alt = tuple(mut.split('/'))
     ref_triplet = genome_assembly(chr_, pos-1, size=3)
     if ref_triplet[1] not in ['C', 'T']:
-        ref_triplet = ''.join(list(map(lambda x: cb[x], ref_triplet[::-1]))) # TODO avoid map
+        ref_triplet = ''.join(list(map(lambda x: cb[x], ref_triplet[::-1])))
         alt = cb[alt]
     return ref_triplet + '>' + alt
 
