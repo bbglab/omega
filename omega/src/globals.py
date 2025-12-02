@@ -36,7 +36,7 @@ def setup_logging_decorator(func):
 
         os.makedirs(log_dir, exist_ok=True)
 
-        level = logging.DEBUG  # if click.get_current_context().params['verbose'] else logging.INFO
+        level = logging.DEBUG  if click.get_current_context().params['verbose'] else logging.INFO
 
         formatter = ColorFormatter(fmt=FORMAT)
 
@@ -44,7 +44,7 @@ def setup_logging_decorator(func):
             level=level,
             outputs=(
                 daiquiri.output.Stream(formatter=formatter),
-                daiquiri.output.File(filename=os.path.join(log_dir, fname), formatter=formatter),
+                daiquiri.output.File(filename=os.path.join(log_dir, fname), formatter=formatter, level=logging.DEBUG),
             ),
         )
 

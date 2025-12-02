@@ -102,11 +102,14 @@ class Assembler:
         # ** step 2: create list of genes present in both the grouping and depths data
         self.genes = list(set(self.group.namespace('genes')) & set(self.depths['GENE'].unique()))
 
-        LOG.debug('First 50 Samples:  %s', list(self.group.namespace('samples'))[:50])
-        LOG.debug('First 50 Genes: %s', self.genes[:50])
+        LOG.info('Number of samples: %d', len(self.group.namespace('samples')))
+        LOG.debug('Samples:  %s', list(self.group.namespace('samples')))
+
+        LOG.info('Number of genes in both grouping and depths data: %d', len(self.genes))
+        LOG.debug('Genes: %s', self.genes)
 
         if mode == 'estimator':
-            LOG.debug('Impacts: %s', list(self.group.namespace('impacts')))
+            LOG.info('Impacts: %s', list(self.group.namespace('impacts')))
 
         # ** step 3: set up lookup table of lambdas
         # dict with key = sample, gene, impact
@@ -120,6 +123,9 @@ class Assembler:
             case 'estimator':
                 self.response: dict = self._response()
                 LOG.debug('response computed')
+        
+        # Store a counter for warnings
+        self.skip: int = 0
 
     @staticmethod
     def merge_annotated_site_with_depth(depths: pd.DataFrame, vep: pd.DataFrame) -> pd.DataFrame:
@@ -258,7 +264,7 @@ class Assembler:
 
         except TypeError as e:
             if 'reduce() of empty iterable with no initial value' in str(e):
-                LOG.warning(
+                LOG.debug(
                     f'No mutations found for {sample_set}, {impact_set}, {gene_set}, filling the counts with 0s.'
                 )
                 n = [0.0] * 96
@@ -279,7 +285,7 @@ class Assembler:
             l = functools.reduce(tf.math.add, lambda_tensors)
 
         except Exception as e:
-            LOG.warning(f'Lambda tensors for {sample_set}, {impact_set}, {gene_set} found error in {e}')
+            LOG.debug(f'Lambda tensors for {sample_set}, {impact_set}, {gene_set} found error in {e}')
             l = [0.0] * 96
 
         # Convert l to a tensor if it's not already one
@@ -297,11 +303,15 @@ class Assembler:
 
                     # either because of lambdas going to 0 or because of an error and then l put to 0, skip testing that group
                     if np.all(l == 0.0):
-                        LOG.warning(f'Lambdas are 0, we are ignoring this case {sample_set}, {impact_set}, {gene_set}.')
+                        self.skip += 1
+                        LOG.debug(f'Lambdas are 0, we are ignoring this case {sample_set}, {impact_set}, {gene_set}.')
                         continue
                     if np.all(n == 0.0):
-                        LOG.warning(
+                        self.skip += 1
+                        LOG.debug(
                             f'There is no mutation, we are ignoring this case {sample_set}, {impact_set}, {gene_set}.'
                         )
                         continue
                     yield (gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n)
+
+        LOG.warning('Total number of warnings for missing mutations or zero Lambdas: %i, check logs for more details', self.skip)

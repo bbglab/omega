@@ -50,6 +50,7 @@ def omega():
 @click.option('--single-sample', type=click.STRING, default = None, help='Name of the single sample. It also serves for activating the single sample mode.')
 @click.option('--absent-synonymous', type=click.Choice(['ignore', 'infer_global_custom', 'infer_covariates']), default = 'ignore', help='Omega mode for genes without synonymous mutations.')
 @click.option('--synonymous-mutrates-file', type=click.Path(), default = None, help='Path to table of synonymous mutation rates per gene.')
+@click.option('--verbose', is_flag=True, help='Enable verbose logging')
 @setup_logging_decorator
 def preprocessing(preprocessing_mode,
                     bed_regions_file, vep_input_generated,
@@ -63,7 +64,8 @@ def preprocessing(preprocessing_mode,
                     genome_assembly,
                     single_sample,
                     absent_synonymous,
-                    synonymous_mutrates_file
+                    synonymous_mutrates_file,
+                    verbose
             ):
     """"Build tables necessary to run Omega."""
     startup_message(__version__, "mode: PREPROCESSING")
@@ -96,8 +98,9 @@ def preprocessing(preprocessing_mode,
 @click.option('--dispersion', type=float, default=0.1, help='Choose dispersion value(default: 0.1)')
 @click.option('--option', type=click.Choice(['bayes', 'mle']), default='bayes', help='Option type (default: bayes)')
 @click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
+@click.option('--verbose', is_flag=True, help='Enable verbose logging')
 @setup_logging_decorator
-def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, dispersion, option, cores):
+def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, dispersion, option, cores, verbose):
     startup_message(__version__, "mode: ESTIMATOR")
 
     display_title_and_params(title="Running estimator...")
@@ -113,8 +116,9 @@ def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotat
 @click.option('--grouping-folder', type=click.Path(exists=True), help='Path to grouping folder')
 @click.option('--output-fn', type=str, help='Output filename')
 @click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
+@click.option('--verbose', is_flag=True, help='Enable verbose logging')
 @setup_logging_decorator
-def mutabilities( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores):
+def mutabilities( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores, verbose):
     """Compute mutabilities per site."""
     startup_message(__version__, "mode: MUTABILITIES")
 
