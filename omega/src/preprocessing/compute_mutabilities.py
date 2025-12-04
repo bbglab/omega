@@ -160,7 +160,7 @@ def compute_mutational_profile(annotated_minimal_maf, all_possible_sites_annotat
     """
 
     # create the matrix in the desired order
-    empty_matrix = pd.DataFrame(index = contexts_formatted)
+    empty_matrix = pd.DataFrame(index = CHANNELS)
 
     # make sure to count each mutation only once (avoid annotation issues)
     annotated_minimal_maf = annotated_minimal_maf[["SAMPLE_ID", "CONTEXT_MUT", "MUT_ID", "EFFECTIVE_MUTS"]].drop_duplicates().reset_index(drop = True)
@@ -462,7 +462,7 @@ def adapt_mutational_profile(mut_profile_file, samples = None):
         mut_probability = mut_probability[samples].copy()
 
     # Create an empty matrix with all contexts, filling missing entries with zeros
-    empty_matrix = pd.DataFrame(index=contexts_formatted)
+    empty_matrix = pd.DataFrame(index=CHANNELS)
     mut_probability = pd.concat((empty_matrix, mut_probability), axis=1)
     mut_probability = mut_probability.fillna(0)
 
