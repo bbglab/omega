@@ -7,9 +7,6 @@
 # =============
 
 """
-
-
-
 import click
 import daiquiri
 
