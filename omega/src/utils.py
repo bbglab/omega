@@ -37,14 +37,4 @@ def transform_context(chr_: str, pos: int, mut: str, assembly: str = "hg38") -> 
         alt = cb[alt]
     return ref_triplet + '>' + alt
 
-
-def transform_bracket_context(bracket_context: str) -> str:
-    """Convert a bracket context (e.g., A[C>T]G) to a string context (e.g., ACG>AT)."""
-    # FIXME: This function is never called
-    ref = bracket_context[2]
-    alt = bracket_context[4]
-    flank1 = bracket_context[0]
-    flank2 = bracket_context[-1]
-    return flank1 + ref + flank2 + '>' + alt
-
 # endregion context_store
