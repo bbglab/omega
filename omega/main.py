@@ -1,25 +1,22 @@
 #!/usr/bin/env python
 
-""" 
+"""
 
 # =============
 # EXAMPLE USAGE
 # =============
 
 """
-
-
-
 import click
 import daiquiri
 
 from omega import __logger_name__, __version__
-
+from omega.src.helpers import display_title_and_params
 from omega.src.preprocessing.main   import main as preprocessing_main
 from omega.src.estimator.main       import main as estimator_main
 from omega.src.mutabilities.main    import main as mutabilities_main
 
-from omega.src.globals              import DATE, setup_logging_decorator, startup_message
+from omega.src.globals              import setup_logging_decorator, startup_message
 
 logger = daiquiri.getLogger(__logger_name__)
 
@@ -31,8 +28,8 @@ def omega():
     pass
 
 
-@omega.command(context_settings=dict(help_option_names=['-h', '--help']),
-                help="Build input tables - Required once per cohort.")
+@omega.command(context_settings=dict(help_option_names=['-h', '--help'], show_default=True),
+                help="Build input tables - Required once per cohort.", )
 @click.option('--preprocessing-mode', type=click.Choice(['run_vep', 'postprocess_vep', 'compute_mutabilities']), help='Preprocessing mode')
 @click.option('--depths-file', type=click.Path(exists=True), help='Path to depths file')
 @click.option('--mutations-file', type=click.Path(exists=True), help='Path to mutations file')
@@ -50,6 +47,7 @@ def omega():
 @click.option('--single-sample', type=click.STRING, default = None, help='Name of the single sample. It also serves for activating the single sample mode.')
 @click.option('--absent-synonymous', type=click.Choice(['ignore', 'infer_global_custom', 'infer_covariates']), default = 'ignore', help='Omega mode for genes without synonymous mutations.')
 @click.option('--synonymous-mutrates-file', type=click.Path(), default = None, help='Path to table of synonymous mutation rates per gene.')
+@click.option('--verbose', is_flag=True, help='Enable verbose logging')
 @setup_logging_decorator
 def preprocessing(preprocessing_mode,
                     bed_regions_file, vep_input_generated,
@@ -63,29 +61,13 @@ def preprocessing(preprocessing_mode,
                     genome_assembly,
                     single_sample,
                     absent_synonymous,
-                    synonymous_mutrates_file
+                    synonymous_mutrates_file,
+                    verbose
             ):
     """"Build tables necessary to run Omega."""
-    startup_message(__version__, "Initializing preprocessing...")
+    startup_message(__version__, "mode: PREPROCESSING")
 
-    logger.info("Received arguments:")
-    logger.info(f"preprocessing_mode: {preprocessing_mode}")
-    logger.info(f"bed_regions_file: {bed_regions_file}")
-    logger.info(f"vep_input_generated: {vep_input_generated}")
-    logger.info(f"vep_output_file: {vep_output_file}")
-    logger.info(f"vep_postprocessed_file: {vep_postprocessed_file}")
-    logger.info(f"input_vep_postprocessed_file: {input_vep_postprocessed_file}")
-    logger.info(f"depths_file: {depths_file}")
-    logger.info(f"mutations_file: {mutations_file}")
-    logger.info(f"table_observed_muts: {table_observed_muts}")
-    logger.info(f"mutabilities_table: {mutabilities_table}")
-    logger.info(f"syn_muts_table: {synonymous_muts_table}")
-    logger.info(f"mutational_profile: {mutational_profile_file}")
-    logger.info(f"mutational_profile global: {mutational_profile_global_file}")
-    logger.info(f"genome_assembly: {genome_assembly}")
-    logger.info(f"single_sample: {single_sample}")
-    logger.info(f"absent_synonymous: {absent_synonymous}")
-    logger.info(f"relative_synonymous_muts_file: {synonymous_mutrates_file}")
+    display_title_and_params(title="Initializing preprocessing...")
 
     preprocessing_main(preprocessing_mode,
                         bed_regions_file, vep_input_generated,
@@ -113,20 +95,13 @@ def preprocessing(preprocessing_mode,
 @click.option('--dispersion', type=float, default=0.1, help='Choose dispersion value(default: 0.1)')
 @click.option('--option', type=click.Choice(['bayes', 'mle']), default='bayes', help='Option type (default: bayes)')
 @click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
+@click.option('--verbose', is_flag=True, help='Enable verbose logging')
 @setup_logging_decorator
-def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, dispersion, option, cores):
-    startup_message(__version__, "Running estimator...")
+def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, dispersion, option, cores, verbose):
+    startup_message(__version__, "mode: ESTIMATOR")
 
-    logger.info("Received arguments:")
-    logger.info(f"observed_mutations_file: {observed_mutations_file}")
-    logger.info(f"mutability_file: {mutability_file}")
-    logger.info(f"depths_file: {depths_file}")
-    logger.info(f"vep_annotation_file: {vep_annotation_file}")
-    logger.info(f"grouping_folder: {grouping_folder}")
-    logger.info(f"output_fn: {output_fn}")
-    logger.info(f"dispersion: {dispersion}")
-    logger.info(f"option: {option}")
-    logger.info(f"cores: {cores}")
+    display_title_and_params(title="Running estimator...")
+
     estimator_main(observed_mutations_file, mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, dispersion, option, cores)
 
 
@@ -138,19 +113,16 @@ def estimator(observed_mutations_file, mutability_file, depths_file, vep_annotat
 @click.option('--grouping-folder', type=click.Path(exists=True), help='Path to grouping folder')
 @click.option('--output-fn', type=str, help='Output filename')
 @click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
+@click.option('--verbose', is_flag=True, help='Enable verbose logging')
 @setup_logging_decorator
-def mutabilities( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores):
-    startup_message(__version__, "Running estimator...")
+def mutabilities( mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores, verbose):
+    """Compute mutabilities per site."""
+    startup_message(__version__, "mode: MUTABILITIES")
 
-    logger.info("Received arguments:")
-    logger.info(f"mutability_file: {mutability_file}")
-    logger.info(f"depths_file: {depths_file}")
-    logger.info(f"vep_annotation_file: {vep_annotation_file}")
-    logger.info(f"grouping_folder: {grouping_folder}")
-    logger.info(f"output_fn: {output_fn}")
-    logger.info(f"cores: {cores}")
+    display_title_and_params(title="Computing mutabilities per site...")
+
     mutabilities_main(mutability_file, depths_file, vep_annotation_file, grouping_folder, output_fn, cores)
 
 
 if __name__ == "__main__":
-    omega() 
+    omega()

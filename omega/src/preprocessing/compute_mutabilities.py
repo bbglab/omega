@@ -1,15 +1,15 @@
 import os
+
 import daiquiri
 import pandas as pd
 
+from omega import __logger_name__
+from omega.src.utils import canonical_channels
 from omega.src.preprocessing.utils import vartype
 
-from omega import __logger_name__, __version__
 logger = daiquiri.getLogger(__logger_name__ + '.preprocessing.comp_mutabs')
 
-from omega.src.preprocessing.context_store import canonical_channels
-
-contexts_formatted = canonical_channels()
+CHANNELS = canonical_channels()
 
 def read_inputs(all_possible_sites_annotated_file, depth_dataframe_file, mutations_file):
     """
@@ -84,8 +84,7 @@ def annotate_mutations_using_vep(maf, all_possible_sites_annotated):
     # I selected the inner strategy so that variants that fall outside of the regions
     # of possible sites are not included in any of the analysis nor the counts
     ###
-    # TODO
-    # revise whether we want to keep it as inner or we want left
+    # TODO revise whether we want to keep it as inner or we want left
     # I prefer inner since if the user provides mutations outside
     # the areas of interest those are excluded from the analysis
     annotated_minimal_maf = minimal_maf.merge(all_possible_sites_annotated, on = ["CHROM", "POS", "REF", "ALT"], how = "inner")
@@ -96,8 +95,7 @@ def annotate_mutations_using_vep(maf, all_possible_sites_annotated):
 def compute_mutations_per_sample_gene_impact_context_table(annotated_minimal_maf,
                                                             impacts_to_exclude = ["non_genic_variant", "intron_variant"]
                                                             ):
-    # TODO
-    # revise the default list of excluded impacts
+    # TODO: revise the default list of excluded impacts
     """
     This function receives:
         - The observed mutations annotated
@@ -107,9 +105,7 @@ def compute_mutations_per_sample_gene_impact_context_table(annotated_minimal_maf
     here the total number of mutations per sample, gene, impact and context can be higher than the number of sites when counting them 1x
     if the effective_muts are being computed with the ALT_DEPTH
     """
-    # TODO
-    # revise whether we are interested in doing it this way or not
-    # filter annotations/positions that we are not interested in
+    # TODO: revise whether we are interested in doing it this way or not filter annotations/positions that we are not interested in
     annotated_minimal_maf = annotated_minimal_maf[annotated_minimal_maf["GENE"] != '-']
     annotated_minimal_maf = annotated_minimal_maf[~annotated_minimal_maf["IMPACT"].isin(impacts_to_exclude)].reset_index(drop = True)
 
@@ -164,12 +160,11 @@ def compute_mutational_profile(annotated_minimal_maf, all_possible_sites_annotat
     """
 
     # create the matrix in the desired order
-    empty_matrix = pd.DataFrame(index = contexts_formatted)
+    empty_matrix = pd.DataFrame(index = CHANNELS)
 
     # make sure to count each mutation only once (avoid annotation issues)
     annotated_minimal_maf = annotated_minimal_maf[["SAMPLE_ID", "CONTEXT_MUT", "MUT_ID", "EFFECTIVE_MUTS"]].drop_duplicates().reset_index(drop = True)
-    # TODO
-    # maybe we should make sure that no mutation is counted
+    # TODO: maybe we should make sure that no mutation is counted
     # if it falls in a position outside the ones for which we have values of depth?
     # it should not happen but who knows...
     ###
@@ -219,7 +214,7 @@ def compute_mutational_profile(annotated_minimal_maf, all_possible_sites_annotat
     # logger.debug(mut_probability.head())
 
     # reindex to ensure the right order
-    mut_probability = mut_probability.reindex(contexts_formatted)
+    mut_probability = mut_probability.reindex(CHANNELS)
     mut_probability.index.name = "CONTEXT_MUT"
     mut_probability = mut_probability.reset_index()
     # mut_probability
@@ -467,7 +462,7 @@ def adapt_mutational_profile(mut_profile_file, samples = None):
         mut_probability = mut_probability[samples].copy()
 
     # Create an empty matrix with all contexts, filling missing entries with zeros
-    empty_matrix = pd.DataFrame(index=contexts_formatted)
+    empty_matrix = pd.DataFrame(index=CHANNELS)
     mut_probability = pd.concat((empty_matrix, mut_probability), axis=1)
     mut_probability = mut_probability.fillna(0)
 
@@ -556,8 +551,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         obs_muts_per_gene_impact_context_sample_wide.columns = ["GENE", "IMPACT", "CONTEXT_MUT"] + samples
         logger.debug("Mutations table compressed for single sample")
 
-    ## TODO
-    ## We could try to do something similar with the depths
+    ## TODO: We could try to do something similar with the depths
     # if single_sample:
     #     depth_dataframe
     #     obs_muts_per_gene_impact_context_sample_wide = obs_muts_per_gene_impact_context_sample_wide_indexed.sum(axis = 1).reset_index()
@@ -603,8 +597,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
 
     if absent_synonymous == 'infer_global_custom':
-        ## FIXME
-        # this will keep the original samples' name, even multiple columns if single sample is not activated
+        ## FIXME: this will keep the original samples' name, even multiple columns if single sample is not activated
         mut_probability_global = adapt_mutational_profile(mut_profile_global)
 
         # this might not work if there are more than one column            
