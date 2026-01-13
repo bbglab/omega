@@ -48,7 +48,10 @@ def read_inputs(all_possible_sites_annotated_file, depth_dataframe_file, mutatio
     else:
         maf["EFFECTIVE_MUTS"] = 1.
         logger.debug("Counting each mutation only once")
-    
+
+    # FIXME revise this part of counting mutations only once,
+    # maybe since we keep the sample and count once per sample this is a smaller problem
+
 
     # make sure that all the files have the chr prefix in the files
     if not all_possible_sites_annotated["CHROM"].iloc[0].startswith("chr"):
@@ -249,7 +252,7 @@ def compute_expected_synonymous_mutations(all_possible_sites_annotated, depth_da
     all_possible_sites_per_sample = all_possible_sites_annotated.merge(binary_depth_dataframe, on = ["CHROM", "POS"], how = "left")
 
     # wide format
-    if single_sample:
+    if single_sample: # this is wrong, here if a group of samples has 25 samples each site should be counted 25 times
         logger.debug("Running in single sample mode.")
         logger.debug(all_possible_sites_per_sample.columns)
         samples_names = [x for x in all_possible_sites_per_sample.columns if x not in ["CHROM", "POS", "REF", "ALT", "GENE", "IMPACT", "CONTEXT_MUT"] ]
@@ -521,6 +524,9 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     annotated_minimal_maf = annotate_mutations_using_vep(maf, all_possible_sites_annotated)
     logger.debug("Mutations annotated")
 
+
+    # checked until here
+
     # Define for which samples we have enough data
     if single_sample:
         samples = [single_sample]
@@ -583,12 +589,14 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
                                                         )
         logger.info("Mutational profile computed")
 
-    # until here looks good to me
+
+    # mut_probability: contains the weights per context (96 values)
+
 
 
     # I want to revise this one in more detail.
     # Compute expected synonymous mutations
-    expected_syn_per_gene_per_sample = compute_expected_synonymous_mutations(all_possible_sites_annotated,
+    weights_syn_per_gene_per_sample = compute_expected_synonymous_mutations(all_possible_sites_annotated,
                                                                                 depth_dataframe,
                                                                                 mut_probability,
                                                                                 samples)
@@ -808,7 +816,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     # we compute the value of alpha per each gene-sample pair,
     # by dividing the number of observed synonymous
     # by the number of synonymous we would be generating with the original mutational profile
-    alpha_per_sample = obs_syn_muts_per_gene_sample.set_index("GENE").divide( expected_syn_per_gene_per_sample.set_index("GENE") )
+    alpha_per_sample = obs_syn_muts_per_gene_sample.set_index("GENE").divide( weights_syn_per_gene_per_sample.set_index("GENE") )
     # print(alpha_per_sample)
 
 
