@@ -605,6 +605,7 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
 
     if absent_synonymous == 'infer_global_custom':
+
         ## FIXME: this will keep the original samples' name, even multiple columns if single sample is not activated
         mut_probability_global = adapt_mutational_profile(mut_profile_global)
 
@@ -630,6 +631,9 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
             logger.info("The following genes have a synonymous mutation rate of 0, that needs to be filled.")
             logger.info(gene_mutation_rates[gene_mutation_rates == 0].index)
             # print(gene_mutation_rates.mean())
+
+            # TODO revise if using the mean to fill 0s makes sense
+            # could be the mean - 1 std or something like this
             mean_syn_mutrate = gene_mutation_rates[gene_mutation_rates != 0].mean()
             logger.info("They will be filled with " + str(mean_syn_mutrate))
             gene_mutation_rates[gene_mutation_rates == 0] = mean_syn_mutrate
@@ -639,9 +643,20 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
         gene_mutation_rates.columns = ["GENE", "MUTDENSITY"]
         gene_mutation_rates = gene_mutation_rates.set_index('GENE')
 
+
+        # TODO there is very likely a problem here:
+        # we are loading the mutation density adjusted
+        # (it is computed dividing by the opportunities of synonymous mutations to occur)
+        # and here we are dividing by the full 1 MB, there are probably issues with this
+
+        # FIXME
+        # SOLUTION: use the mutation density adjusted instead of the version we are
+        # currently using and deprecate the one in the mutation density table
+
         # remove the per MB correction
         gene_mutation_rates = gene_mutation_rates / 1e6
         logger.debug(gene_mutation_rates)
+
 
         ## FIXME: revise if this should be changed and mutrates should be provided without scaling to Mb
 
@@ -777,7 +792,6 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
     elif absent_synonymous == 'infer_covariates':
         pass
 
-    # else:
     elif absent_synonymous == 'ignore':
     # Count of observed synonymous mutations per sample and gene
         obs_syn_muts_per_gene_context_sample = obs_muts_per_gene_impact_context_sample_wide[
