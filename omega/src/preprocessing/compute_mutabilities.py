@@ -782,8 +782,11 @@ def compute_mutabilities_wrapper(all_possible_sites_annotated_file,
 
     if syn_muts_table:
         syn_muts2store = obs_syn_muts_per_gene_sample.copy()
-        syn_muts2store = syn_muts2store.groupby(by = ["GENE"]).sum()[samples].sum(axis = 1).reset_index()
-#        syn_muts2store.columns = ["GENE", "SYNONYMOUS_MUTS"]
+        if single_sample:
+            syn_muts2store = syn_muts2store.groupby(by = ["GENE"]).sum()[samples].sum(axis = 1).reset_index()
+        else:
+            syn_muts2store = syn_muts2store.groupby(by = ["GENE"]).sum()[samples].fillna(0).reset_index()
+
         syn_muts2store.to_csv(f"{syn_muts_table}",
                                 header = True,
                                 index = False,
