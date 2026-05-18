@@ -8,7 +8,7 @@ from omega import __logger_name__, __version__
 SEED = 31
 
 logger = daiquiri.getLogger(__logger_name__ + '.estimator.omega')
-MIN_PVALUE_FLOAT32 = 1.17e-38
+MIN_PVALUE_FLOAT32_RESOLUTION = 1.17e-38
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_DETERMINISTIC_OPS'] = 'true'
@@ -254,15 +254,16 @@ def mle_infer(args, dispersion):
 
     res['dnds'] = [omega_hat]
     pvalue_value = float(pvalue)
-    if pvalue_value == 0.0:
+    if pvalue_value < MIN_PVALUE_FLOAT32_RESOLUTION:
         logger.warning(
-            'P-value underflow to 0 for gene=%s sample=%s impact=%s; replacing with min float32 %g',
+            'P-value (%g) below float32 resolution for gene=%s sample=%s impact=%s; replacing with %g',
+            pvalue_value,
             gene_term,
             sample_term,
             impact_term,
-            MIN_PVALUE_FLOAT32,
+            MIN_PVALUE_FLOAT32_RESOLUTION,
         )
-        pvalue_value = MIN_PVALUE_FLOAT32
+        pvalue_value = MIN_PVALUE_FLOAT32_RESOLUTION
     res['pvalue'] = [pvalue_value]
     res['lower'] = [lower]
     res['upper'] = [upper]
