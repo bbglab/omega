@@ -75,6 +75,8 @@ class Assembler:
         DataFrame containing mutation counts (default is an empty DataFrame).
     mode : str, optional
         Mode of operation, either 'mutabilities' or 'estimator' (default is 'mutabilities').
+    ignore_zero_mutations : bool, optional
+        Whether to ignore cases with zero observed mutations (default is True).
     """
 
     VEP_COLUMNS = ['CHROM', 'POS', 'CONTEXT_MUT', 'GENE', 'IMPACT']
@@ -87,10 +89,12 @@ class Assembler:
         group: Grouping,
         mutations_counts: pd.DataFrame = pd.DataFrame(),
         mode: str = 'mutabilities',
+        ignore_zero_mutations: bool = True,
     ):
         self.mut_counts: pd.DataFrame = mutations_counts
         self.mutability: pd.DataFrame = mutability
         self.group: Grouping = group
+        self.ignore_zero_mutations: bool = ignore_zero_mutations
 
         self.mutabilities_per_site: pd.DataFrame = vep[self.VEP_COLUMNS].copy()
 
@@ -307,11 +311,16 @@ class Assembler:
                         LOG.debug(f'Lambdas are 0, we are ignoring this case {sample_set}, {impact_set}, {gene_set}.')
                         continue
                     if np.all(n == 0.0):
-                        self.skip += 1
+                        if self.ignore_zero_mutations:
+                            self.skip += 1
+                            LOG.debug(
+                                f'There is no mutation, we are ignoring this case {sample_set}, {impact_set}, {gene_set}.'
+                            )
+                            continue
                         LOG.debug(
-                            f'There is no mutation, we are ignoring this case {sample_set}, {impact_set}, {gene_set}.'
+                            f'There is no mutation, but we are keeping this case {sample_set}, {impact_set}, {gene_set}.'
                         )
-                        continue
                     yield (gene_term, sample_term, impact_term, gene_set, sample_set, impact_set, l, n)
 
-        LOG.warning('Total number of warnings for missing mutations or zero Lambdas: %i, check logs for more details', self.skip)
+        warning_reason = 'missing mutations or zero Lambdas' if self.ignore_zero_mutations else 'zero Lambdas'
+        LOG.warning('Total number of warnings for %s: %i, check logs for more details', warning_reason, self.skip)
