@@ -8,6 +8,8 @@ from omega import __logger_name__, __version__
 SEED = 31
 
 logger = daiquiri.getLogger(__logger_name__ + '.estimator.omega')
+# Minimum non-zero p-value when clamping to float32 limits.
+MIN_NORMALIZED_FLOAT32_PVALUE = 1.17e-38
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_DETERMINISTIC_OPS'] = 'true'
@@ -252,7 +254,7 @@ def mle_infer(args, dispersion):
     omega_hat, lower, upper, pvalue = dnds_calculator.mle_run()
 
     res['dnds'] = [omega_hat]
-    res['pvalue'] = [pvalue]
+    res['pvalue'] = [float(pvalue)]
     res['lower'] = [lower]
     res['upper'] = [upper]
 

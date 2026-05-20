@@ -10,6 +10,8 @@ import tqdm
 from omega import __logger_name__
 from omega.src.assemble import Assembler, Grouping
 from omega.src.estimator.omega import mle_infer, bayes_infer
+# Minimum non-zero p-value when clamping to float32 limits.
+MIN_NORMALIZED_FLOAT32_PVALUE = 1.17e-38
 
 LOG = daiquiri.getLogger(__logger_name__ + '.estimator')
 
@@ -86,6 +88,10 @@ def mle(input_json: dict[str, str], output_fn: str, dispersion: float, cores=4):
 
     LOG.info('Writing results to  %s ', output_fn)
     df = pd.DataFrame(res)
+
+    LOG.info('Replacing 0 p-values with %g in  %s ', MIN_NORMALIZED_FLOAT32_PVALUE, output_fn)
+    df['pvalue'] = df['pvalue'].apply(lambda x: x if x > 0 else MIN_NORMALIZED_FLOAT32_PVALUE)
+
     df.to_csv(output_fn, sep='\t', index=False)
 
 
