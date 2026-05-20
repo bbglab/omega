@@ -94,11 +94,7 @@ def preprocessing(preprocessing_mode,
 @click.option('--output-fn', type=str, help='Output filename')
 @click.option('--dispersion', type=float, default=0.1, help='Choose dispersion value(default: 0.1)')
 @click.option('--option', type=click.Choice(['bayes', 'mle']), default='bayes', help='Option type (default: bayes)')
-@click.option(
-    '--ignore-zero-mutations/--include-zero-mutations',
-    default=True,
-    help='Ignore cases with 0 observed mutations.',
-)
+@click.option('--ignore-zero-mutations/--include-zero-mutations', default=True, help='Ignore cases with 0 observed mutations.')
 @click.option('--cores', type=int, default=4, help='Number of cores (default: 4)')
 @click.option('--verbose', is_flag=True, help='Enable verbose logging')
 @setup_logging_decorator
