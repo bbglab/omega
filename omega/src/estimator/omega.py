@@ -254,19 +254,7 @@ def mle_infer(args, dispersion):
     omega_hat, lower, upper, pvalue = dnds_calculator.mle_run()
 
     res['dnds'] = [omega_hat]
-    pvalue_float = float(pvalue)
-    pvalue_clamped = pvalue_float
-    if pvalue_float < MIN_NORMALIZED_FLOAT32_PVALUE:
-        logger.warning(
-            'P-value (%g) below min float32 p-value for gene=%s sample=%s impact=%s; replacing with %g',
-            pvalue_float,
-            gene_term,
-            sample_term,
-            impact_term,
-            MIN_NORMALIZED_FLOAT32_PVALUE,
-        )
-        pvalue_clamped = MIN_NORMALIZED_FLOAT32_PVALUE
-    res['pvalue'] = [pvalue_clamped]
+    res['pvalue'] = [float(pvalue)]
     res['lower'] = [lower]
     res['upper'] = [upper]
 
