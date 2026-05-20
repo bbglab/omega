@@ -164,6 +164,8 @@ __THIS WILL BE CORRECTED SOON__
 
 `--cores` how many cores to use by the parallel processing
 
+`--ignore-zero-mutations/--include-zero-mutations` controls whether to skip groups with 0 observed mutations (default: ignore)
+
 ### Input
 
 The input is given as a single json dictionary with keys pointing to the required paths.

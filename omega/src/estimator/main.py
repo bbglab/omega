@@ -37,7 +37,7 @@ def _init_worker(gpu_id: int | None = None) -> None:
         pass
 
 
-def prepare_data(d):
+def prepare_data(d, ignore_zero_mutations: bool = True):
     mut_counts = pd.read_csv(d['observed_mutations_file'], sep='\t')
     mutability = pd.read_csv(d['mutability_file'], sep='\t')
     depths = pd.read_csv(d['depths_file'], sep='\t')
@@ -51,13 +51,21 @@ def prepare_data(d):
     group.add_group('genes', os.path.join(d['grouping_folder'], 'group_genes.json'))
     group.add_group('impacts', os.path.join(d['grouping_folder'], 'group_impacts.json'))
 
-    ground_control = Assembler(depths, vep, mutability, group, mut_counts, mode='estimator')
+    ground_control = Assembler(
+        depths,
+        vep,
+        mutability,
+        group,
+        mut_counts,
+        mode='estimator',
+        ignore_zero_mutations=ignore_zero_mutations,
+    )
     return list(ground_control.input_generator())
 
-def bayes(input_json, output_fn, cores=4):
+def bayes(input_json, output_fn, cores=4, ignore_zero_mutations: bool = True):
     LOG.info("Running in bayes mode")
 
-    input_grid = prepare_data(input_json)
+    input_grid = prepare_data(input_json, ignore_zero_mutations=ignore_zero_mutations)
     LOG.info("Data prepared")
     res = {}
     ctx = multiprocessing.get_context('spawn')
@@ -67,10 +75,10 @@ def bayes(input_json, output_fn, cores=4):
     df = pd.DataFrame(res)
     df.to_csv(output_fn, sep='\t', index=False)
 
-def mle(input_json: dict[str, str], output_fn: str, dispersion: float, cores=4):
+def mle(input_json: dict[str, str], output_fn: str, dispersion: float, cores=4, ignore_zero_mutations: bool = True):
     LOG.info('Running in mle mode')
 
-    input_grid = prepare_data(input_json)
+    input_grid = prepare_data(input_json, ignore_zero_mutations=ignore_zero_mutations)
     LOG.info('Data prepared')
 
     res = {}
@@ -105,6 +113,7 @@ def main(
     dispersion_value,
     option,
     cores,
+    ignore_zero_mutations,
 ):
     d: dict[str, str] = {
         'observed_mutations_file': observed_mutations_file,
@@ -115,6 +124,6 @@ def main(
     }
 
     if option == 'bayes':
-        bayes(d, output_fn, cores= int(cores))
+        bayes(d, output_fn, cores= int(cores), ignore_zero_mutations=ignore_zero_mutations)
     if option == 'mle':
-        mle(d, output_fn, dispersion_value, cores=int(cores))
+        mle(d, output_fn, dispersion_value, cores=int(cores), ignore_zero_mutations=ignore_zero_mutations)
